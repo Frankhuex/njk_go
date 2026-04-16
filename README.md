@@ -50,12 +50,7 @@ docker logs -f 容器名称
 ### 2.4 去WebUI配置WebSocket
 浏览器登录http://你的ip:你的端口，这里端口是你在docker-compose.yml中配置的，映射到6099的端口。
 输入token登录。
-找到网络配置，创建WebSocket客户端，URL填：“ws://host.docker.internal:你的Python端口”，这里端口见src/main.py最下面：
-```python
-async def main():
-    async with serve(handle_websocket, "0.0.0.0", 8081):
-        await asyncio.Future()
-```
-如以上这样就是8081
+找到网络配置，创建WebSocket客户端，URL填：“ws://host.docker.internal:你的Go服务器端口”，端口必须和在internal/config/config.go定义的一致.
+
 下面两个重连间隔可以修改，我喜欢3000ms
 然后就能启动了
