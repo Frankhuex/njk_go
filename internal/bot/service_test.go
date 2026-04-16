@@ -9,19 +9,19 @@ import (
 	"njk_go/internal/napcat"
 )
 
-func TestMatchIndexPrefersMoreSpecificPattern(t *testing.T) {
+func TestMatchCommandPrefersMoreSpecificPattern(t *testing.T) {
 	service := NewService(config.Config{
 		BotUserID:       "1558109748",
 		BotNickname:     "你居垦",
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	pattern, index := service.matchIndex(".bbh 36 add 第一章\n内容")
-	if pattern == nil {
+	match := service.matchCommand(".bbh 36 add 第一章\n内容")
+	if match == nil {
 		t.Fatal("expected pattern to match")
 	}
-	if index != bbhIndex+4 {
-		t.Fatalf("unexpected index: %d", index)
+	if match.Command.Key != commandBBHAdd {
+		t.Fatalf("unexpected command key: %s", match.Command.Key)
 	}
 }
 
@@ -56,16 +56,16 @@ func TestFormatReportDropsTopicAndWordSections(t *testing.T) {
 	}
 }
 
-func TestMatchIndexSupportsDotAIC(t *testing.T) {
+func TestMatchCommandSupportsDotAIC(t *testing.T) {
 	service := NewService(config.Config{
 		BotUserID:       "1558109748",
 		BotNickname:     "你居垦",
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	pattern, index := service.matchIndex(".aic")
-	if pattern == nil || index != aicIndex {
-		t.Fatalf("expected .aic to match aic index, got index=%d", index)
+	match := service.matchCommand(".aic")
+	if match == nil || match.Command.Key != commandAIC {
+		t.Fatalf("expected .aic to match aic command, got=%v", match)
 	}
 }
 
