@@ -1,0 +1,16 @@
+services:
+    napcat:
+        environment: # 用于调整docker内运行的用户
+            - NAPCAT_UID=${NAPCAT_UID}
+            - NAPCAT_GID=${NAPCAT_GID}
+        ports: # 根据实际情况修改冒号左侧！
+            - 11000:3000
+            - 11001:3001
+            - 11002:6099
+        extra_hosts: # 重要的映射，让Docker内可访问外面端口
+            - "host.docker.internal:host-gateway"
+        container_name: napcat-njk # 必须修改成不重复的名称
+        network_mode: bridge
+        image: mlikiowa/napcat-docker:latest
+        mem_limit: 512m
+        memswap_limit: 1.5g

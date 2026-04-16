@@ -1,0 +1,1 @@
+docker compose -p napcat_njk up --build -d
