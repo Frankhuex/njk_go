@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 
 	"njk_go/internal/bot"
 	"njk_go/internal/napcat"
@@ -79,8 +80,10 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		conn:   conn,
 		reader: rw.Reader,
 	}
+	connCtx, cancel := context.WithCancel(context.Background())
 
 	defer func() {
+		cancel()
 		_ = wsConn.Close()
 		log.Printf("【连接关闭】客户端地址: %s", clientAddr)
 	}()
@@ -104,13 +107,13 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		switch parsed.Kind {
 		case napcat.EventKindNotice:
-			s.service.HandleNotice(context.Background(), wsConn, clientAddr, parsed.Notice)
+			go s.service.HandleNotice(connCtx, wsConn, clientAddr, parsed.Notice)
 		case napcat.EventKindGroupMessage:
-			s.service.HandleGroupMessage(context.Background(), wsConn, clientAddr, parsed.GroupMessage)
+			go s.service.HandleGroupMessage(connCtx, wsConn, clientAddr, parsed.GroupMessage)
 		case napcat.EventKindActionResponse:
 			if parsed.Action != nil {
 				log.Printf("【收到回执】%s - status=%s retcode=%d", clientAddr, parsed.Action.Status, parsed.Action.Retcode)
-				s.service.HandleActionResponse(context.Background(), parsed.Action)
+				go s.service.HandleActionResponse(connCtx, parsed.Action)
 			}
 		default:
 			log.Printf("【收到其他事件】%s - kind=%s", clientAddr, parsed.Kind)
@@ -119,8 +122,9 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 type Conn struct {
-	conn   net.Conn
-	reader *bufio.Reader
+	conn    net.Conn
+	reader  *bufio.Reader
+	writeMu sync.Mutex
 }
 
 func (c *Conn) Close() error {
@@ -194,6 +198,9 @@ func (c *Conn) WriteText(payload []byte) error {
 }
 
 func (c *Conn) writeFrame(opcode byte, payload []byte) error {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+
 	header := []byte{0x80 | opcode}
 	length := len(payload)
 

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -97,6 +98,54 @@ func TestHandleNoticeIgnoresOtherTarget(t *testing.T) {
 	netErr, ok := err.(net.Error)
 	if !ok || !netErr.Timeout() {
 		t.Fatalf("expected timeout error, got: %v", err)
+	}
+}
+
+func TestConnWriteTextSerializesConcurrentWrites(t *testing.T) {
+	serverSide, clientSide := net.Pipe()
+	defer serverSide.Close()
+	defer clientSide.Close()
+
+	conn := &Conn{
+		conn:   serverSide,
+		reader: bufio.NewReader(serverSide),
+	}
+
+	payloads := [][]byte{
+		[]byte(`{"a":1}`),
+		[]byte(`{"b":2}`),
+	}
+
+	var wg sync.WaitGroup
+	for _, payload := range payloads {
+		wg.Add(1)
+		go func(payload []byte) {
+			defer wg.Done()
+			if err := conn.WriteText(payload); err != nil {
+				t.Errorf("WriteText returned error: %v", err)
+			}
+		}(payload)
+	}
+
+	received := make([]string, 0, len(payloads))
+	for range payloads {
+		frame, err := readFramePayload(clientSide)
+		if err != nil {
+			t.Fatalf("readFramePayload returned error: %v", err)
+		}
+		received = append(received, string(frame))
+	}
+
+	wg.Wait()
+
+	if len(received) != 2 {
+		t.Fatalf("unexpected received count: %d", len(received))
+	}
+
+	firstOK := received[0] == string(payloads[0]) || received[0] == string(payloads[1])
+	secondOK := received[1] == string(payloads[0]) || received[1] == string(payloads[1])
+	if !firstOK || !secondOK || received[0] == received[1] {
+		t.Fatalf("unexpected frames: %#v", received)
 	}
 }
 
