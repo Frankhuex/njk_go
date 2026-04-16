@@ -47,5 +47,5 @@ fi
 
 echo "[INFO] 使用 Go: $GO_BIN"
 "$GO_BIN" version
-echo "[INFO] 启动 WebSocket 服务，监听 :11004"
+echo "[INFO] 启动 WebSocket 服务，监听"
 exec "$GO_BIN" run ./cmd/server

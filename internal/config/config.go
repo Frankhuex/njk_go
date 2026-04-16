@@ -24,6 +24,7 @@ type Config struct {
 	BotUserID       string
 	BotNickname     string
 	AllowedGroupIDs map[string]struct{}
+	BannedUserIDs   map[string]struct{}
 }
 
 func Load() (Config, error) {
@@ -41,7 +42,7 @@ func Load() (Config, error) {
 	}
 
 	cfg := Config{
-		ListenAddr:    value("WS_ADDR", values, ":11004"),
+		ListenAddr:    value("WS_ADDR", values, ":11003"),
 		DBHost:        value("DB_HOST", values, "localhost"),
 		DBUser:        value("DB_USER", values, "njk"),
 		DBPassword:    value("DB_PWD", values, ""),
@@ -61,6 +62,7 @@ func Load() (Config, error) {
 	}
 	cfg.DBPort = port
 	cfg.AllowedGroupIDs = parseGroupIDs(value("GROUP_IDS", values, "897830548,979088841,1050660050,665074632,238872980,876274089"))
+	cfg.BannedUserIDs = parseIDSet(value("BANNED_USER_IDS", values, "3889001802"))
 	if cfg.DBUser == "postgres" {
 		cfg.DBUser = "njk"
 	}
@@ -126,6 +128,10 @@ func value(key string, fileValues map[string]string, fallback string) string {
 }
 
 func parseGroupIDs(raw string) map[string]struct{} {
+	return parseIDSet(raw)
+}
+
+func parseIDSet(raw string) map[string]struct{} {
 	result := map[string]struct{}{}
 	for _, item := range strings.Split(raw, ",") {
 		id := strings.TrimSpace(item)

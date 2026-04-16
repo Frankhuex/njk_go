@@ -1,6 +1,9 @@
 package bot
 
 import (
+	"bufio"
+	"context"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -95,4 +98,92 @@ func TestFormatDisplayTimeDoesNotShiftClock(t *testing.T) {
 	if got := formatDisplayTime(input); got != "2026-04-16 10:30:45" {
 		t.Fatalf("unexpected formatted time: %s", got)
 	}
+}
+
+func TestHandleGroupMessageIgnoresBannedUser(t *testing.T) {
+	serverSide, clientSide := net.Pipe()
+	defer serverSide.Close()
+	defer clientSide.Close()
+
+	conn := &stubOutboundWriter{conn: &wsTestConn{
+		conn:   serverSide,
+		reader: bufio.NewReader(serverSide),
+	}}
+
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+		BannedUserIDs: map[string]struct{}{
+			"3889001802": {},
+		},
+	}, nil, nil, nil, nil)
+
+	event := &napcat.GroupMessageEvent{
+		Time:       time.Now().Unix(),
+		UserID:     "3889001802",
+		GroupID:    "123456789",
+		RawMessage: ".help",
+		Sender: napcat.Sender{
+			UserID:   "3889001802",
+			Nickname: "banned-user",
+		},
+		Message: napcat.NewTextMessage(".help"),
+	}
+
+	service.HandleGroupMessage(context.Background(), conn, "test-client", event)
+
+	_ = clientSide.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	buf := make([]byte, 1)
+	_, err := clientSide.Read(buf)
+	if err == nil {
+		t.Fatal("expected banned user message to be ignored without response")
+	}
+	netErr, ok := err.(net.Error)
+	if !ok || !netErr.Timeout() {
+		t.Fatalf("expected timeout error, got: %v", err)
+	}
+}
+
+type stubOutboundWriter struct {
+	conn *wsTestConn
+}
+
+func (s *stubOutboundWriter) WriteText(payload []byte) error {
+	return s.conn.WriteText(payload)
+}
+
+type wsTestConn struct {
+	conn   net.Conn
+	reader *bufio.Reader
+}
+
+func (c *wsTestConn) WriteText(payload []byte) error {
+	return writeWSFrame(c.conn, payload)
+}
+
+func writeWSFrame(conn net.Conn, payload []byte) error {
+	header := []byte{0x81}
+	switch length := len(payload); {
+	case length < 126:
+		header = append(header, byte(length))
+	case length <= 65535:
+		header = append(header, 126, byte(length>>8), byte(length))
+	default:
+		header = append(header, 127,
+			byte(uint64(length)>>56),
+			byte(uint64(length)>>48),
+			byte(uint64(length)>>40),
+			byte(uint64(length)>>32),
+			byte(uint64(length)>>24),
+			byte(uint64(length)>>16),
+			byte(uint64(length)>>8),
+			byte(uint64(length)),
+		)
+	}
+	if _, err := conn.Write(header); err != nil {
+		return err
+	}
+	_, err := conn.Write(payload)
+	return err
 }
