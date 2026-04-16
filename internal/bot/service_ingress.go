@@ -41,6 +41,14 @@ func (s *Service) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 			return
 		}
 	}
+	senderID := event.Sender.UserID.String()
+	if senderID == "" {
+		senderID = event.UserID.String()
+	}
+	if _, banned := s.cfg.BannedUserIDs[senderID]; banned {
+		log.Printf("【忽略群消息】%s - 用户:%s 在黑名单", clientAddr, senderID)
+		return
+	}
 
 	rawMessage := event.RawMessage
 	match := s.matchCommand(rawMessage)
