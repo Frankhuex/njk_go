@@ -46,7 +46,61 @@ func TestLoadIncludesDefaultBannedUserID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load failed: %v", err)
 	}
-	if _, ok := cfg.BannedUserIDs["3889001802"]; !ok {
-		t.Fatal("expected default banned user id to be loaded")
+	if len(cfg.BannedUserIDs) != 0 {
+		t.Fatal("expected default banned user ids to be empty")
+	}
+}
+
+func TestLoadUsesEmptyDefaultsForBotAndGroupConfig(t *testing.T) {
+	keys := []string{"BOT_USER_ID", "BOT_NICKNAME", "GROUP_IDS", "BANNED_USER_IDS", "WS_ADDR"}
+	previous := map[string]string{}
+	for _, key := range keys {
+		previous[key] = os.Getenv(key)
+		if err := os.Unsetenv(key); err != nil {
+			t.Fatalf("unsetenv %s failed: %v", key, err)
+		}
+	}
+	t.Cleanup(func() {
+		for _, key := range keys {
+			if previous[key] == "" {
+				_ = os.Unsetenv(key)
+				continue
+			}
+			_ = os.Setenv(key, previous[key])
+		}
+	})
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	if cfg.ListenAddr != ":11003" {
+		t.Fatalf("unexpected listen addr: %s", cfg.ListenAddr)
+	}
+	if cfg.BotUserID != "" {
+		t.Fatalf("expected empty bot user id, got: %s", cfg.BotUserID)
+	}
+	if cfg.BotNickname != "" {
+		t.Fatalf("expected empty bot nickname, got: %s", cfg.BotNickname)
+	}
+	if len(cfg.AllowedGroupIDs) != 0 {
+		t.Fatal("expected empty allowed group ids")
+	}
+	if len(cfg.BannedUserIDs) != 0 {
+		t.Fatal("expected empty banned user ids")
+	}
+}
+
+func TestNormalizeListenAddr(t *testing.T) {
+	cases := map[string]string{
+		"":             ":11003",
+		"11003":        ":11003",
+		":11003":       ":11003",
+		"127.0.0.1:80": "127.0.0.1:80",
+	}
+	for input, want := range cases {
+		if got := normalizeListenAddr(input); got != want {
+			t.Fatalf("normalizeListenAddr(%q) = %q, want %q", input, got, want)
+		}
 	}
 }

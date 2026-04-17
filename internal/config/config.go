@@ -42,7 +42,7 @@ func Load() (Config, error) {
 	}
 
 	cfg := Config{
-		ListenAddr:    value("WS_ADDR", values, ":11003"),
+		ListenAddr:    normalizeListenAddr(value("WS_ADDR", values, "11003")),
 		DBHost:        value("DB_HOST", values, "localhost"),
 		DBUser:        value("DB_USER", values, "njk"),
 		DBPassword:    value("DB_PWD", values, ""),
@@ -52,8 +52,8 @@ func Load() (Config, error) {
 		ModelName:     value("MODEL_NAME", values, ""),
 		FreeModelName: value("FREE_MODEL_NAME", values, ""),
 		BBHBaseURL:    strings.TrimRight(value("BBH_BASE_URL", values, "http://106.13.161.72:10000/api"), "/"),
-		BotUserID:     value("BOT_USER_ID", values, "1558109748"),
-		BotNickname:   value("BOT_NICKNAME", values, "你居垦"),
+		BotUserID:     value("BOT_USER_ID", values, ""),
+		BotNickname:   value("BOT_NICKNAME", values, ""),
 	}
 
 	port, err := strconv.Atoi(value("DB_PORT", values, "5432"))
@@ -61,8 +61,8 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("invalid DB_PORT: %w", err)
 	}
 	cfg.DBPort = port
-	cfg.AllowedGroupIDs = parseGroupIDs(value("GROUP_IDS", values, "897830548,979088841,1050660050,665074632,238872980,876274089"))
-	cfg.BannedUserIDs = parseIDSet(value("BANNED_USER_IDS", values, "3889001802"))
+	cfg.AllowedGroupIDs = parseGroupIDs(value("GROUP_IDS", values, ""))
+	cfg.BannedUserIDs = parseIDSet(value("BANNED_USER_IDS", values, ""))
 	if cfg.DBUser == "postgres" {
 		cfg.DBUser = "njk"
 	}
@@ -141,4 +141,18 @@ func parseIDSet(raw string) map[string]struct{} {
 		result[id] = struct{}{}
 	}
 	return result
+}
+
+func normalizeListenAddr(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ":11003"
+	}
+	if strings.HasPrefix(raw, ":") {
+		return raw
+	}
+	if strings.Contains(raw, ":") {
+		return raw
+	}
+	return ":" + raw
 }
