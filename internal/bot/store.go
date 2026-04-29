@@ -119,7 +119,7 @@ func (s *Store) RecentMessages(ctx context.Context, groupID string, limit int) (
 	var rows []StoredMessage
 	err := s.db.WithContext(ctx).
 		Table(`message AS m`).
-		Select(`m.message_id, m.time, COALESCE(m.sender_id, '') AS sender_id, COALESCE(u.nickname, '') AS nickname, COALESCE(m.card, '') AS card, COALESCE(m.text, '') AS text, COALESCE(m.raw_message, '') AS raw_message`).
+		Select(`m.message_id, m.time, COALESCE(m.sender_id, '') AS sender_id, COALESCE(u.nickname, '') AS nickname, COALESCE(m.card, '') AS card, COALESCE(m.text, '') AS text, COALESCE(m.raw_message, '') AS raw_message, COALESCE(m.raw_json::text, '') AS raw_json`).
 		Joins(`LEFT JOIN "user" u ON m.sender_id = u.user_id`).
 		Where("m.group_id = ?", groupID).
 		Order("m.time DESC").
@@ -136,7 +136,7 @@ func (s *Store) MessagesSince(ctx context.Context, groupID string, start time.Ti
 	var rows []StoredMessage
 	err := s.db.WithContext(ctx).
 		Table(`message AS m`).
-		Select(`m.message_id, m.time, COALESCE(m.sender_id, '') AS sender_id, COALESCE(u.nickname, '') AS nickname, COALESCE(m.card, '') AS card, COALESCE(m.text, '') AS text, COALESCE(m.raw_message, '') AS raw_message`).
+		Select(`m.message_id, m.time, COALESCE(m.sender_id, '') AS sender_id, COALESCE(u.nickname, '') AS nickname, COALESCE(m.card, '') AS card, COALESCE(m.text, '') AS text, COALESCE(m.raw_message, '') AS raw_message, COALESCE(m.raw_json::text, '') AS raw_json`).
 		Joins(`LEFT JOIN "user" u ON m.sender_id = u.user_id`).
 		Where("m.group_id = ? AND m.time >= ?", groupID, start).
 		Order("m.time ASC").
@@ -231,6 +231,7 @@ type StoredMessage struct {
 	Card       string    `gorm:"column:card"`
 	Text       string    `gorm:"column:text"`
 	RawMessage string    `gorm:"column:raw_message"`
+	RawJSON    string    `gorm:"column:raw_json"`
 }
 
 func (m StoredMessage) Format() string {

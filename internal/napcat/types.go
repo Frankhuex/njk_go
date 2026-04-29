@@ -97,6 +97,9 @@ type SendGroupMsgRequest = ActionRequest[SendGroupMsgParams]
 // GetMsgRequest 对应 NapCat 的 get_msg 请求体。
 type GetMsgRequest = ActionRequest[GetMsgParams]
 
+// SetMsgEmojiLikeRequest 对应 NapCat 的 set_msg_emoji_like 请求体。
+type SetMsgEmojiLikeRequest = ActionRequest[SetMsgEmojiLikeParams]
+
 // SendGroupMsgParams 对应 NapCat send_group_msg 的 params 部分。
 type SendGroupMsgParams struct {
 	GroupID    ID             `json:"group_id"`
@@ -107,6 +110,12 @@ type SendGroupMsgParams struct {
 // GetMsgParams 对应 NapCat get_msg 的 params 部分。
 type GetMsgParams struct {
 	MessageID ID `json:"message_id"`
+}
+
+// SetMsgEmojiLikeParams 对应 NapCat set_msg_emoji_like 的 params 部分。
+type SetMsgEmojiLikeParams struct {
+	MessageID ID     `json:"message_id"`
+	EmojiID   string `json:"emoji_id"`
 }
 
 // SendMsgResponseData 对应 NapCat send_group_msg 成功响应中的 data 结构。

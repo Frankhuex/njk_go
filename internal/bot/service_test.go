@@ -3,6 +3,7 @@ package bot
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"net"
 	"strings"
 	"testing"
@@ -69,6 +70,63 @@ func TestMatchCommandSupportsDotAIC(t *testing.T) {
 	match := service.matchCommand(".aic")
 	if match == nil || match.Command.Key != commandAIC {
 		t.Fatalf("expected .aic to match aic command, got=%v", match)
+	}
+}
+
+func TestMatchCommandSupportsFaceWithoutSpace(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	match := service.matchCommand(".face12")
+	if match == nil || match.Command.Key != commandFace {
+		t.Fatalf("expected .face12 to match face command, got=%v", match)
+	}
+	if len(match.Groups) < 2 || match.Groups[1] != "12" {
+		t.Fatalf("unexpected face match groups: %#v", match.Groups)
+	}
+}
+
+func TestExtractFaceIDsFromRawJSON(t *testing.T) {
+	rawJSONBytes, err := json.Marshal([]napcat.MessageSegment{
+		napcat.NewTextSegment("hi"),
+		{
+			Type: "face",
+			Data: napcat.MessageSegmentData{ID: "123"},
+		},
+		napcat.NewReplySegment("456"),
+		{
+			Type: "face",
+			Data: napcat.MessageSegmentData{ID: "789"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal raw json: %v", err)
+	}
+
+	faceIDs, err := extractFaceIDsFromRawJSON(string(rawJSONBytes))
+	if err != nil {
+		t.Fatalf("extract face ids: %v", err)
+	}
+	if len(faceIDs) != 2 {
+		t.Fatalf("expected 2 face ids, got=%d", len(faceIDs))
+	}
+	if faceIDs[0] != "123" || faceIDs[1] != "789" {
+		t.Fatalf("unexpected face ids: %#v", faceIDs)
+	}
+}
+
+func TestExtractFaceIDsFromRawJSONRejectsNonSegmentJSON(t *testing.T) {
+	rawJSONBytes, err := json.Marshal("hello")
+	if err != nil {
+		t.Fatalf("marshal raw json: %v", err)
+	}
+
+	_, err = extractFaceIDsFromRawJSON(string(rawJSONBytes))
+	if err == nil {
+		t.Fatal("expected non-segment json to fail")
 	}
 }
 

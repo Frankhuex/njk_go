@@ -6,9 +6,11 @@ import (
 )
 
 type pendingOutbound struct {
-	GroupID    string
-	Message    string
-	ShouldSave bool
+	GroupID            string
+	Message            string
+	ShouldSave         bool
+	EmojiLikeMessageID string
+	EmojiLikeIDs       []string
 }
 
 type pendingMessage struct {
