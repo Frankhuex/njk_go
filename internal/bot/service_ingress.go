@@ -160,6 +160,10 @@ func (s *Service) sendGroupText(ctx context.Context, conn outboundWriter, groupI
 }
 
 func (s *Service) setMsgEmojiLike(ctx context.Context, conn outboundWriter, messageID string, emojiID string) error {
+	if err := sleepRandomMillis(ctx, s.rng, 1000, 2000); err != nil {
+		return err
+	}
+
 	req := napcat.SetMsgEmojiLikeRequest{
 		Action: "set_msg_emoji_like",
 		Params: napcat.SetMsgEmojiLikeParams{

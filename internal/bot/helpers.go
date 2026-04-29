@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"time"
@@ -44,6 +45,18 @@ func randomRange(rng *rand.Rand, left int, right int) int {
 		return left
 	}
 	return left + rng.Intn(right-left+1)
+}
+
+func sleepRandomMillis(ctx context.Context, rng *rand.Rand, left int, right int) error {
+	delay := time.Duration(randomRange(rng, left, right)) * time.Millisecond
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
 
 func startOfReport(dayNum int) time.Time {
