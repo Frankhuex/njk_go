@@ -1,6 +1,6 @@
 # NJK使用方法
 ## 0. 安装PostgreSQL
-## 1. 启动Python WebSocket服务器（就是这里的代码）
+## 1. 启动Go WebSocket服务器（就是这里的代码）
 ### 1.1 修改环境变量
 在根目录创建.env，参考.env.example，根据实际情况定义以下8个变量：
 PostgreSQL相关的：

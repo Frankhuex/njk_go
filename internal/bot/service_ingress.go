@@ -95,8 +95,15 @@ func (s *Service) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 	}
 
 	for _, response := range responses {
-		if err := s.sendGroupText(ctx, conn, response.GroupID, response.Message, response.ShouldSave); err != nil {
-			log.Printf("【发送响应失败】%s - %v", clientAddr, err)
+		if response.Message != "" {
+			if err := s.sendGroupText(ctx, conn, response.GroupID, response.Message, response.ShouldSave); err != nil {
+				log.Printf("【发送响应失败】%s - %v", clientAddr, err)
+			}
+		}
+		for _, emojiID := range response.EmojiLikeIDs {
+			if err := s.setMsgEmojiLike(ctx, conn, response.EmojiLikeMessageID, emojiID); err != nil {
+				log.Printf("【发送表情回复失败】%s - %v", clientAddr, err)
+			}
 		}
 	}
 }
@@ -149,5 +156,24 @@ func (s *Service) sendGroupText(ctx context.Context, conn outboundWriter, groupI
 		ShouldSave: shouldSave,
 	})
 	log.Printf("【发送群消息】group=%s should_save=%t message=%s", groupID, shouldSave, message)
+	return nil
+}
+
+func (s *Service) setMsgEmojiLike(ctx context.Context, conn outboundWriter, messageID string, emojiID string) error {
+	req := napcat.SetMsgEmojiLikeRequest{
+		Action: "set_msg_emoji_like",
+		Params: napcat.SetMsgEmojiLikeParams{
+			MessageID: napcat.ID(messageID),
+			EmojiID:   emojiID,
+		},
+	}
+	data, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	if err := conn.WriteText(data); err != nil {
+		return err
+	}
+	log.Printf("【发送表情回复】message_id=%s emoji_id=%s", messageID, emojiID)
 	return nil
 }
