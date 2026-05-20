@@ -144,14 +144,14 @@ func (s *Store) MessagesSince(ctx context.Context, groupID string, start time.Ti
 	return rows, err
 }
 
-func (s *Store) GroupImageCandidates(ctx context.Context, groupID string, excludeID int32) ([]StoredImage, error) {
+func (s *Store) GroupImageCandidates(ctx context.Context, groupID string, excludeImageID int32, excludeMessageID string) ([]StoredImage, error) {
 	var rows []StoredImage
 	err := s.db.WithContext(ctx).
 		Table(`image AS i`).
 		Select(`i.id, i.message_id, i.image_hash, m.time, COALESCE(m.sender_id, '') AS sender_id, COALESCE(u.nickname, '') AS nickname, COALESCE(m.card, '') AS card`).
 		Joins(`JOIN message m ON i.message_id = m.message_id`).
 		Joins(`LEFT JOIN "user" u ON m.sender_id = u.user_id`).
-		Where("m.group_id = ? AND i.id <> ?", groupID, excludeID).
+		Where("m.group_id = ? AND i.id <> ? AND i.message_id <> ?", groupID, excludeImageID, excludeMessageID).
 		Scan(&rows).Error
 	return rows, err
 }

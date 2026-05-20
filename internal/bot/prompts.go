@@ -18,6 +18,7 @@ const (
 	commandAIC       commandKey = "aic"
 	commandReport    commandKey = "report"
 	commandFace      commandKey = "face"
+	commandDice      commandKey = "dice"
 	commandHelp      commandKey = "help"
 	commandHelpBBH   commandKey = "help_bbh"
 	commandBBHPlaza  commandKey = "bbh_plaza"
@@ -40,6 +41,7 @@ var helpText = `.概括 .总结 .俳句 .无只因 .最 .vs .ccb .xmas
 消息中含有你居垦三个字就会触发自动回复
 .报告 后面需要接数字，表示报告查询的天数
 .face 后面接数字，表示读取本群最近消息里的系统表情并贴到这条指令上
+.2d6 掷2次6面骰子，支持写成 .2 d 6
 .help bbh 查看bbh模块讲解
 .ai 后面接数字，表示结合的前面消息条数，不包含指令消息，正常AI助手式回答
 .aic 会继续上一个.ai的话题，不包含指令消息。（总共读取=上一个.ai读取的消息+之后的全部消息）
@@ -188,6 +190,10 @@ ccb句式形如“豌豆笑传之踩踩背”。
 		{
 			Key:     commandFace,
 			Pattern: `^ *\.face *(\d+) *$`,
+		},
+		{
+			Key:     commandDice,
+			Pattern: `^ *\.(\d+) *d *(\d+) *$`,
 		},
 		{
 			Key:     commandHelp,
