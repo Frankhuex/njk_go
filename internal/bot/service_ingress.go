@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"njk_go/internal/napcat"
@@ -100,6 +101,11 @@ func (s *Service) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 				log.Printf("【发送响应失败】%s - %v", clientAddr, err)
 			}
 		}
+		if len(response.ImageURLs) > 0 {
+			if err := s.multiSendGroupImages(ctx, conn, response.GroupID, response.ImageURLs); err != nil {
+				log.Printf("【发送图片响应失败】%s - %v", clientAddr, err)
+			}
+		}
 		for _, emojiID := range response.EmojiLikeIDs {
 			if err := s.setMsgEmojiLike(ctx, conn, response.EmojiLikeMessageID, emojiID); err != nil {
 				log.Printf("【发送表情回复失败】%s - %v", clientAddr, err)
@@ -186,6 +192,40 @@ func (s *Service) sendGroupImage(ctx context.Context, conn outboundWriter, group
 		ShouldSave: false,
 	})
 	log.Printf("【发送群图片】group=%s should_save=%t img_url=%s", groupID, false, imgURL)
+	return nil
+}
+
+func (s *Service) multiSendGroupImages(ctx context.Context, conn outboundWriter, groupID string, imgURLs []string) error {
+	segments := []napcat.MessageSegment{}
+	for _, imgURL := range imgURLs {
+		segments = append(segments, napcat.MessageSegment{
+			Type: "image",
+			Data: napcat.MessageSegmentData{
+				File: imgURL,
+			},
+		})
+	}
+	req := napcat.SendGroupMsgRequest{
+		Action: "send_group_msg",
+		Params: napcat.SendGroupMsgParams{
+			GroupID: napcat.ID(groupID),
+			Message: napcat.NewSegmentMessage(segments...),
+		},
+	}
+	data, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	if err := conn.WriteText(data); err != nil {
+		return err
+	}
+	s.pending.Push(pendingMessage{
+		GroupID:    groupID,
+		Message:    "",
+		SentAt:     time.Now(),
+		ShouldSave: false,
+	})
+	log.Printf("【发送群图片】group=%s should_save=%t img_url=%s", groupID, false, strings.Join(imgURLs, ","))
 	return nil
 }
 

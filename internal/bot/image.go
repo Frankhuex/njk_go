@@ -43,7 +43,7 @@ func (s *ImageService) SaveAndCheckDuplicate(ctx context.Context, groupID string
 		return nil, err
 	}
 
-	record, err := s.store.SaveImage(ctx, messageID, hash)
+	record, err := s.store.SaveImage(ctx, messageID, hash, imageURL)
 	if err != nil {
 		return nil, err
 	}

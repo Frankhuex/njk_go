@@ -8,6 +8,7 @@ import (
 type pendingOutbound struct {
 	GroupID            string
 	Message            string
+	ImageURLs          []string
 	ShouldSave         bool
 	EmojiLikeMessageID string
 	EmojiLikeIDs       []string

@@ -60,7 +60,6 @@ func (s *Service) saveIncomingMessageAndCheckImages(ctx context.Context, event *
 				if err := s.imageService.EnsureEmojiWhitelist(ctx, groupID, segment.Data.URL); err != nil {
 					log.Printf("【表情白名单处理失败】group=%s err=%v", groupID, err)
 				}
-				continue
 			}
 			if segment.Data.URL != "" {
 				imageURLs = append(imageURLs, segment.Data.URL)

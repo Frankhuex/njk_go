@@ -9,6 +9,7 @@ import (
 
 	"njk_go/internal/bbh"
 	"njk_go/internal/config"
+	"njk_go/internal/imagestore"
 
 	"gorm.io/gorm"
 )
@@ -28,6 +29,7 @@ type Service struct {
 	freeAIClient AICompleter
 	bbhClient    *bbh.Client
 	imageService *ImageService
+	imageStore   *imagestore.Client
 	commands     []compiledCommand
 	commandMap   map[commandKey]compiledCommand
 	rng          *rand.Rand
@@ -48,6 +50,7 @@ func NewService(cfg config.Config, db *gorm.DB, aiClient AICompleter, freeAIClie
 		freeAIClient: freeAIClient,
 		bbhClient:    bbhClient,
 		imageService: NewImageService(store),
+		imageStore:   imagestore.NewClient(".", cfg.MyURL),
 		rng:          rand.New(rand.NewSource(time.Now().UnixNano())),
 		pending:      &pendingQueue{},
 		lastAI:       map[string]time.Time{},

@@ -68,6 +68,10 @@ func (s *Service) buildCommandHandler(key commandKey) commandHandler {
 		return func(ctx context.Context, event *napcat.GroupMessageEvent, match matchedCommand) (*pendingOutbound, error) {
 			return s.handleDiceCommand(ctx, event.GroupID.String(), match)
 		}
+	case commandSymmetricLeft:
+		return func(ctx context.Context, event *napcat.GroupMessageEvent, match matchedCommand) (*pendingOutbound, error) {
+			return s.handleSymmetricLeftCommand(ctx, event.GroupID.String(), match)
+		}
 	case commandHelp:
 		return func(ctx context.Context, event *napcat.GroupMessageEvent, match matchedCommand) (*pendingOutbound, error) {
 			return simpleOutbound(event.GroupID.String(), helpText), nil
