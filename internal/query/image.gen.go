@@ -7,7 +7,6 @@ package query
 import (
 	"context"
 	"database/sql"
-	"njk_go/internal/model"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -17,6 +16,8 @@ import (
 	"gorm.io/gen/field"
 
 	"gorm.io/plugin/dbresolver"
+
+	"njk_go/internal/model"
 )
 
 func newImage(db *gorm.DB, opts ...gen.DOOption) image {
@@ -30,6 +31,7 @@ func newImage(db *gorm.DB, opts ...gen.DOOption) image {
 	_image.ID = field.NewInt32(tableName, "id")
 	_image.MessageID = field.NewString(tableName, "message_id")
 	_image.ImageHash = field.NewString(tableName, "image_hash")
+	_image.URL = field.NewString(tableName, "url")
 
 	_image.fillFieldMap()
 
@@ -43,6 +45,7 @@ type image struct {
 	ID        field.Int32
 	MessageID field.String
 	ImageHash field.String
+	URL       field.String
 
 	fieldMap map[string]field.Expr
 }
@@ -62,6 +65,7 @@ func (i *image) updateTableName(table string) *image {
 	i.ID = field.NewInt32(table, "id")
 	i.MessageID = field.NewString(table, "message_id")
 	i.ImageHash = field.NewString(table, "image_hash")
+	i.URL = field.NewString(table, "url")
 
 	i.fillFieldMap()
 
@@ -86,10 +90,11 @@ func (i *image) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (i *image) fillFieldMap() {
-	i.fieldMap = make(map[string]field.Expr, 3)
+	i.fieldMap = make(map[string]field.Expr, 4)
 	i.fieldMap["id"] = i.ID
 	i.fieldMap["message_id"] = i.MessageID
 	i.fieldMap["image_hash"] = i.ImageHash
+	i.fieldMap["url"] = i.URL
 }
 
 func (i image) clone(db *gorm.DB) image {
