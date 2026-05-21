@@ -26,11 +26,28 @@ const (
 	imageKindGIF
 )
 
+type symmetryMode int
+
+const (
+	symmetryLeft symmetryMode = iota
+	symmetryRight
+	symmetryUp
+	symmetryDown
+	symmetryLeftUp
+	symmetryRightUp
+	symmetryLeftDown
+	symmetryRightDown
+)
+
 const symmetricImageMaxConcurrency = 4
 
-func (s *Service) handleSymmetricLeftCommand(ctx context.Context, groupID string, match matchedCommand) (*pendingOutbound, error) {
+func (s *Service) handleSymmetricCommand(ctx context.Context, groupID string, match matchedCommand) (*pendingOutbound, error) {
 	if len(match.Groups) < 2 {
 		return simpleOutbound(groupID, "参数错误"), nil
+	}
+	mode, err := symmetryModeFromCommand(match.Command.Key)
+	if err != nil {
+		return nil, err
 	}
 
 	count, err := strconv.Atoi(match.Groups[1])
@@ -67,7 +84,7 @@ func (s *Service) handleSymmetricLeftCommand(ctx context.Context, groupID string
 				return
 			}
 
-			imageURL, err := s.makeSymmetricLeftImage(ctx, item, data, *item.URL)
+			imageURL, err := s.makeSymmetricImage(ctx, mode, item, data, *item.URL)
 			if err != nil {
 				return
 			}
@@ -86,7 +103,30 @@ func (s *Service) handleSymmetricLeftCommand(ctx context.Context, groupID string
 	return imageOutbound(groupID, outputURLs), nil
 }
 
-func (s *Service) makeSymmetricLeftImage(ctx context.Context, item model.Image, data []byte, sourceURL string) (string, error) {
+func symmetryModeFromCommand(key commandKey) (symmetryMode, error) {
+	switch key {
+	case commandSymmetricLeft:
+		return symmetryLeft, nil
+	case commandSymmetricRight:
+		return symmetryRight, nil
+	case commandSymmetricUp:
+		return symmetryUp, nil
+	case commandSymmetricDown:
+		return symmetryDown, nil
+	case commandSymmetricLeftUp:
+		return symmetryLeftUp, nil
+	case commandSymmetricRightUp:
+		return symmetryRightUp, nil
+	case commandSymmetricLeftDown:
+		return symmetryLeftDown, nil
+	case commandSymmetricRightDown:
+		return symmetryRightDown, nil
+	default:
+		return symmetryLeft, fmt.Errorf("unsupported symmetry command: %s", key)
+	}
+}
+
+func (s *Service) makeSymmetricImage(ctx context.Context, mode symmetryMode, item model.Image, data []byte, sourceURL string) (string, error) {
 	kind := detectImageKind(sourceURL, data)
 	baseName := symmetricFileBase(item.MessageID, item.ID)
 
@@ -96,7 +136,7 @@ func (s *Service) makeSymmetricLeftImage(ctx context.Context, item model.Image, 
 		if err != nil {
 			return "", err
 		}
-		result := makeSymmetricGIF(animated)
+		result := makeSymmetricGIF(animated, mode)
 		fileName := baseName + ".gif"
 		if err := s.imageStore.SaveGIF(result, fileName); err != nil {
 			return "", err
@@ -107,7 +147,7 @@ func (s *Service) makeSymmetricLeftImage(ctx context.Context, item model.Image, 
 		if err != nil {
 			return "", err
 		}
-		result := makeSymmetricStatic(img)
+		result := makeSymmetricStatic(img, mode)
 		fileName := baseName + ".png"
 		if err := s.imageStore.SavePNG(result, fileName); err != nil {
 			return "", err
@@ -169,19 +209,19 @@ func sanitizeSymmetricToken(value string) string {
 	return b.String()
 }
 
-func makeSymmetricStatic(src image.Image) image.Image {
+func makeSymmetricStatic(src image.Image, mode symmetryMode) image.Image {
 	bounds := src.Bounds()
 	dst := image.NewRGBA(bounds)
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			srcX := mirroredSourceX(bounds, x)
-			dst.Set(x, y, src.At(srcX, y))
+			srcX, srcY := mirroredSourcePoint(bounds, x, y, mode)
+			dst.Set(x, y, src.At(srcX, srcY))
 		}
 	}
 	return dst
 }
 
-func makeSymmetricGIF(src *gif.GIF) *gif.GIF {
+func makeSymmetricGIF(src *gif.GIF, mode symmetryMode) *gif.GIF {
 	result := &gif.GIF{
 		Image:           make([]*image.Paletted, 0, len(src.Image)),
 		Delay:           append([]int(nil), src.Delay...),
@@ -196,8 +236,8 @@ func makeSymmetricGIF(src *gif.GIF) *gif.GIF {
 		dst := image.NewPaletted(bounds, color.Palette(frame.Palette))
 		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 			for x := bounds.Min.X; x < bounds.Max.X; x++ {
-				srcX := mirroredSourceX(bounds, x)
-				dst.SetColorIndex(x, y, frame.ColorIndexAt(srcX, y))
+				srcX, srcY := mirroredSourcePoint(bounds, x, y, mode)
+				dst.SetColorIndex(x, y, frame.ColorIndexAt(srcX, srcY))
 			}
 		}
 		result.Image = append(result.Image, dst)
@@ -205,14 +245,51 @@ func makeSymmetricGIF(src *gif.GIF) *gif.GIF {
 	return result
 }
 
-func mirroredSourceX(bounds image.Rectangle, x int) int {
+func mirroredSourcePoint(bounds image.Rectangle, x int, y int, mode symmetryMode) (int, int) {
 	width := bounds.Dx()
-	leftWidth := (width + 1) / 2
+	height := bounds.Dy()
 	relativeX := x - bounds.Min.X
-	if relativeX < leftWidth {
-		return x
+	relativeY := y - bounds.Min.Y
+
+	leftX := relativeX
+	rightX := width - 1 - relativeX
+	upY := relativeY
+	downY := height - 1 - relativeY
+
+	switch mode {
+	case symmetryLeft:
+		return bounds.Min.X + minInt(leftX, rightX), y
+	case symmetryRight:
+		return bounds.Min.X + maxInt(leftX, rightX), y
+	case symmetryUp:
+		return x, bounds.Min.Y + minInt(upY, downY)
+	case symmetryDown:
+		return x, bounds.Min.Y + maxInt(upY, downY)
+	case symmetryLeftUp:
+		return bounds.Min.X + minInt(leftX, rightX), bounds.Min.Y + minInt(upY, downY)
+	case symmetryRightUp:
+		return bounds.Min.X + maxInt(leftX, rightX), bounds.Min.Y + minInt(upY, downY)
+	case symmetryLeftDown:
+		return bounds.Min.X + minInt(leftX, rightX), bounds.Min.Y + maxInt(upY, downY)
+	case symmetryRightDown:
+		return bounds.Min.X + maxInt(leftX, rightX), bounds.Min.Y + maxInt(upY, downY)
+	default:
+		return x, y
 	}
-	return bounds.Min.X + (width - 1 - relativeX)
+}
+
+func minInt(left int, right int) int {
+	if left < right {
+		return left
+	}
+	return right
+}
+
+func maxInt(left int, right int) int {
+	if left > right {
+		return left
+	}
+	return right
 }
 
 func compactStringsInOrder(items []string) []string {

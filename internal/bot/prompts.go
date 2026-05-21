@@ -5,29 +5,36 @@ import "fmt"
 type commandKey string
 
 const (
-	commandSummarize     commandKey = "summarize"
-	commandAnalyze       commandKey = "analyze"
-	commandHaiku         commandKey = "haiku"
-	commandWuzhiyin      commandKey = "wuzhiyin"
-	commandMost          commandKey = "most"
-	commandVS            commandKey = "vs"
-	commandCCB           commandKey = "ccb"
-	commandXmas          commandKey = "xmas"
-	commandAI            commandKey = "ai"
-	commandNJK           commandKey = "njk"
-	commandAIC           commandKey = "aic"
-	commandReport        commandKey = "report"
-	commandFace          commandKey = "face"
-	commandDice          commandKey = "dice"
-	commandSymmetricLeft commandKey = "symmetric_left"
-	commandHelp          commandKey = "help"
-	commandHelpBBH       commandKey = "help_bbh"
-	commandBBHPlaza      commandKey = "bbh_plaza"
-	commandBBHBook       commandKey = "bbh_book"
-	commandBBHPara       commandKey = "bbh_para"
-	commandBBHRange      commandKey = "bbh_range"
-	commandBBHAdd        commandKey = "bbh_add"
-	commandBBHAI         commandKey = "bbh_ai"
+	commandSummarize          commandKey = "summarize"
+	commandAnalyze            commandKey = "analyze"
+	commandHaiku              commandKey = "haiku"
+	commandWuzhiyin           commandKey = "wuzhiyin"
+	commandMost               commandKey = "most"
+	commandVS                 commandKey = "vs"
+	commandCCB                commandKey = "ccb"
+	commandXmas               commandKey = "xmas"
+	commandAI                 commandKey = "ai"
+	commandNJK                commandKey = "njk"
+	commandAIC                commandKey = "aic"
+	commandReport             commandKey = "report"
+	commandFace               commandKey = "face"
+	commandDice               commandKey = "dice"
+	commandSymmetricLeft      commandKey = "symmetric_left"
+	commandSymmetricRight     commandKey = "symmetric_right"
+	commandSymmetricUp        commandKey = "symmetric_up"
+	commandSymmetricDown      commandKey = "symmetric_down"
+	commandSymmetricLeftUp    commandKey = "symmetric_left_up"
+	commandSymmetricRightUp   commandKey = "symmetric_right_up"
+	commandSymmetricLeftDown  commandKey = "symmetric_left_down"
+	commandSymmetricRightDown commandKey = "symmetric_right_down"
+	commandHelp               commandKey = "help"
+	commandHelpBBH            commandKey = "help_bbh"
+	commandBBHPlaza           commandKey = "bbh_plaza"
+	commandBBHBook            commandKey = "bbh_book"
+	commandBBHPara            commandKey = "bbh_para"
+	commandBBHRange           commandKey = "bbh_range"
+	commandBBHAdd             commandKey = "bbh_add"
+	commandBBHAI              commandKey = "bbh_ai"
 )
 
 type commandDef struct {
@@ -43,7 +50,8 @@ var helpText = `.概括 .总结 .俳句 .无只因 .最 .vs .ccb .xmas
 .报告 后面需要接数字，表示报告查询的天数
 .face 后面接数字，表示读取本群最近消息里的系统表情并贴到这条指令上
 .2d6 掷2次6面骰子，支持写成 .2 d 6
-.对称左 生成左半对称图
+.对称左/.对称右/.对称上/.对称下 生成对应方向的半边对称图
+.对称左上/.对称右上/.对称左下/.对称右下 生成对应角来源的四象限对称图
 .help bbh 查看bbh模块讲解
 .ai 后面接数字，表示结合的前面消息条数，不包含指令消息，正常AI助手式回答
 .aic 会继续上一个.ai的话题，不包含指令消息。（总共读取=上一个.ai读取的消息+之后的全部消息）
@@ -200,6 +208,34 @@ ccb句式形如“豌豆笑传之踩踩背”。
 		{
 			Key:     commandSymmetricLeft,
 			Pattern: `^ *\.对称左 *(\d+) *$`,
+		},
+		{
+			Key:     commandSymmetricRight,
+			Pattern: `^ *\.对称右 *(\d+) *$`,
+		},
+		{
+			Key:     commandSymmetricUp,
+			Pattern: `^ *\.对称上 *(\d+) *$`,
+		},
+		{
+			Key:     commandSymmetricDown,
+			Pattern: `^ *\.对称下 *(\d+) *$`,
+		},
+		{
+			Key:     commandSymmetricLeftUp,
+			Pattern: `^ *\.对称左上 *(\d+) *$`,
+		},
+		{
+			Key:     commandSymmetricRightUp,
+			Pattern: `^ *\.对称右上 *(\d+) *$`,
+		},
+		{
+			Key:     commandSymmetricLeftDown,
+			Pattern: `^ *\.对称左下 *(\d+) *$`,
+		},
+		{
+			Key:     commandSymmetricRightDown,
+			Pattern: `^ *\.对称右下 *(\d+) *$`,
 		},
 		{
 			Key:     commandHelp,

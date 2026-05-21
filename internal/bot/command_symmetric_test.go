@@ -23,9 +23,14 @@ func TestMatchCommandSupportsSymmetricWithoutSpace(t *testing.T) {
 	if len(match.Groups) < 2 || match.Groups[1] != "5" {
 		t.Fatalf("unexpected groups: %#v", match.Groups)
 	}
+
+	match = service.matchCommand(".对称右下8")
+	if match == nil || match.Command.Key != commandSymmetricRightDown {
+		t.Fatalf("expected .对称右下8 to match symmetric command, got=%v", match)
+	}
 }
 
-func TestMakeSymmetricStaticMirrorsRightHalf(t *testing.T) {
+func TestMakeSymmetricStaticMirrorsLeftToRight(t *testing.T) {
 	src := image.NewRGBA(image.Rect(0, 0, 5, 1))
 	colors := []color.RGBA{
 		{R: 1, A: 255},
@@ -38,12 +43,61 @@ func TestMakeSymmetricStaticMirrorsRightHalf(t *testing.T) {
 		src.Set(x, 0, c)
 	}
 
-	got := makeSymmetricStatic(src)
+	got := makeSymmetricStatic(src, symmetryLeft)
 	want := []uint8{1, 2, 3, 2, 1}
 	for x, expected := range want {
 		r, _, _, _ := got.At(x, 0).RGBA()
 		if uint8(r>>8) != expected {
 			t.Fatalf("unexpected pixel at x=%d: got=%d want=%d", x, uint8(r>>8), expected)
+		}
+	}
+}
+
+func TestMakeSymmetricStaticMirrorsRightToLeft(t *testing.T) {
+	src := image.NewRGBA(image.Rect(0, 0, 5, 1))
+	colors := []color.RGBA{
+		{R: 1, A: 255},
+		{R: 2, A: 255},
+		{R: 3, A: 255},
+		{R: 4, A: 255},
+		{R: 5, A: 255},
+	}
+	for x, c := range colors {
+		src.Set(x, 0, c)
+	}
+
+	got := makeSymmetricStatic(src, symmetryRight)
+	want := []uint8{5, 4, 3, 4, 5}
+	for x, expected := range want {
+		r, _, _, _ := got.At(x, 0).RGBA()
+		if uint8(r>>8) != expected {
+			t.Fatalf("unexpected pixel at x=%d: got=%d want=%d", x, uint8(r>>8), expected)
+		}
+	}
+}
+
+func TestMakeSymmetricStaticMirrorsLeftUpToAllQuadrants(t *testing.T) {
+	src := image.NewRGBA(image.Rect(0, 0, 3, 3))
+	value := uint8(1)
+	for y := 0; y < 3; y++ {
+		for x := 0; x < 3; x++ {
+			src.Set(x, y, color.RGBA{R: value, A: 255})
+			value++
+		}
+	}
+
+	got := makeSymmetricStatic(src, symmetryLeftUp)
+	want := [][]uint8{
+		{1, 2, 1},
+		{4, 5, 4},
+		{1, 2, 1},
+	}
+	for y := range want {
+		for x, expected := range want[y] {
+			r, _, _, _ := got.At(x, y).RGBA()
+			if uint8(r>>8) != expected {
+				t.Fatalf("unexpected pixel at (%d,%d): got=%d want=%d", x, y, uint8(r>>8), expected)
+			}
 		}
 	}
 }
@@ -66,7 +120,7 @@ func TestMakeSymmetricGIFMirrorsEachFrame(t *testing.T) {
 		LoopCount: 2,
 	}
 
-	got := makeSymmetricGIF(src)
+	got := makeSymmetricGIF(src, symmetryLeft)
 	if len(got.Image) != 1 {
 		t.Fatalf("unexpected frame count: %d", len(got.Image))
 	}
