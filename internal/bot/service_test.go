@@ -150,7 +150,7 @@ func TestHandleDiceCommandRejectsCountOverTwenty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handle dice command: %v", err)
 	}
-	if outbound == nil || outbound.Message != "掷骰子次数不能超过20" {
+	if outbound == nil || outbound.Message != "太多啦，最多20次" {
 		t.Fatalf("unexpected outbound: %#v", outbound)
 	}
 }

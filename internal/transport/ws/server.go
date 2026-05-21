@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"njk_go/internal/bot"
+	"njk_go/internal/imagestore"
 	"njk_go/internal/napcat"
 )
 
@@ -27,26 +28,31 @@ const (
 )
 
 type Server struct {
-	addr    string
-	service *bot.Service
+	addr      string
+	service   *bot.Service
+	staticDir string
 }
 
 func NewServer(addr string, service *bot.Service) *Server {
-	return &Server{addr: addr, service: service}
+	return &Server{addr: addr, service: service, staticDir: "."}
 }
 
 func (s *Server) ListenAndServe() error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", s.handleWebSocket)
-
 	log.Printf("WebSocket 服务器启动，监听 %s", s.addr)
 
 	server := &http.Server{
 		Addr:    s.addr,
-		Handler: mux,
+		Handler: s.newMux(),
 	}
 
 	return server.ListenAndServe()
+}
+
+func (s *Server) newMux() *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(imagestore.ImagesDir(s.staticDir)))))
+	mux.HandleFunc("/", s.handleWebSocket)
+	return mux
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {

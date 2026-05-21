@@ -21,6 +21,7 @@ type Config struct {
 	ModelName       string
 	FreeModelName   string
 	BBHBaseURL      string
+	MyURL           string
 	BotUserID       string
 	BotNickname     string
 	AllowedGroupIDs map[string]struct{}
@@ -52,6 +53,7 @@ func Load() (Config, error) {
 		ModelName:     value("MODEL_NAME", values, ""),
 		FreeModelName: value("FREE_MODEL_NAME", values, ""),
 		BBHBaseURL:    strings.TrimRight(value("BBH_BASE_URL", values, ""), "/"),
+		MyURL:         strings.TrimRight(value("MY_URL", values, "http://localhost:11003"), "/"),
 		BotUserID:     value("BOT_USER_ID", values, ""),
 		BotNickname:   value("BOT_NICKNAME", values, "你居垦"),
 	}

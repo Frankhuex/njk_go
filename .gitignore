@@ -2,3 +2,4 @@ tools/
 **/.DS_Store
 .env
 build/
+images/

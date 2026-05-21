@@ -159,6 +159,36 @@ func (s *Service) sendGroupText(ctx context.Context, conn outboundWriter, groupI
 	return nil
 }
 
+func (s *Service) sendGroupImage(ctx context.Context, conn outboundWriter, groupID string, imgURL string) error {
+	req := napcat.SendGroupMsgRequest{
+		Action: "send_group_msg",
+		Params: napcat.SendGroupMsgParams{
+			GroupID: napcat.ID(groupID),
+			Message: napcat.NewSegmentMessage(napcat.MessageSegment{
+				Type: "image",
+				Data: napcat.MessageSegmentData{
+					File: imgURL,
+				},
+			}),
+		},
+	}
+	data, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	if err := conn.WriteText(data); err != nil {
+		return err
+	}
+	s.pending.Push(pendingMessage{
+		GroupID:    groupID,
+		Message:    "",
+		SentAt:     time.Now(),
+		ShouldSave: false,
+	})
+	log.Printf("【发送群图片】group=%s should_save=%t img_url=%s", groupID, false, imgURL)
+	return nil
+}
+
 func (s *Service) setMsgEmojiLike(ctx context.Context, conn outboundWriter, messageID string, emojiID string) error {
 	if err := sleepRandomMillis(ctx, s.rng, 1000, 2000); err != nil {
 		return err

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestLoadOverridesLegacyPostgresUser(t *testing.T) {
+func TestLoadUsesEnvOverrideForDBUser(t *testing.T) {
 	previous := os.Getenv("DB_USER")
 	t.Cleanup(func() {
 		if previous == "" {
@@ -23,7 +23,7 @@ func TestLoadOverridesLegacyPostgresUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load failed: %v", err)
 	}
-	if cfg.DBUser != "njk" {
+	if cfg.DBUser != "postgres" {
 		t.Fatalf("unexpected db user: %s", cfg.DBUser)
 	}
 }
@@ -80,8 +80,8 @@ func TestLoadUsesEmptyDefaultsForBotAndGroupConfig(t *testing.T) {
 	if cfg.BotUserID != "" {
 		t.Fatalf("expected empty bot user id, got: %s", cfg.BotUserID)
 	}
-	if cfg.BotNickname != "" {
-		t.Fatalf("expected empty bot nickname, got: %s", cfg.BotNickname)
+	if cfg.BotNickname != "你居垦" {
+		t.Fatalf("expected default bot nickname, got: %s", cfg.BotNickname)
 	}
 	if len(cfg.AllowedGroupIDs) != 0 {
 		t.Fatal("expected empty allowed group ids")
@@ -102,5 +102,51 @@ func TestNormalizeListenAddr(t *testing.T) {
 		if got := normalizeListenAddr(input); got != want {
 			t.Fatalf("normalizeListenAddr(%q) = %q, want %q", input, got, want)
 		}
+	}
+}
+
+func TestLoadUsesDefaultMyURL(t *testing.T) {
+	previous := os.Getenv("MY_URL")
+	t.Cleanup(func() {
+		if previous == "" {
+			_ = os.Unsetenv("MY_URL")
+			return
+		}
+		_ = os.Setenv("MY_URL", previous)
+	})
+
+	if err := os.Unsetenv("MY_URL"); err != nil {
+		t.Fatalf("unsetenv failed: %v", err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	if cfg.MyURL != "http://localhost:11003" {
+		t.Fatalf("unexpected my url: %s", cfg.MyURL)
+	}
+}
+
+func TestLoadTrimsTrailingSlashFromMyURL(t *testing.T) {
+	previous := os.Getenv("MY_URL")
+	t.Cleanup(func() {
+		if previous == "" {
+			_ = os.Unsetenv("MY_URL")
+			return
+		}
+		_ = os.Setenv("MY_URL", previous)
+	})
+
+	if err := os.Setenv("MY_URL", "http://localhost:11003/"); err != nil {
+		t.Fatalf("setenv failed: %v", err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	if cfg.MyURL != "http://localhost:11003" {
+		t.Fatalf("unexpected my url: %s", cfg.MyURL)
 	}
 }

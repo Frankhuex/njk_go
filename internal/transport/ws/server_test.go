@@ -7,6 +7,10 @@ import (
 	"encoding/json"
 	"io"
 	"net"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -146,6 +150,53 @@ func TestConnWriteTextSerializesConcurrentWrites(t *testing.T) {
 	secondOK := received[1] == string(payloads[0]) || received[1] == string(payloads[1])
 	if !firstOK || !secondOK || received[0] == received[1] {
 		t.Fatalf("unexpected frames: %#v", received)
+	}
+}
+
+func TestServerMuxServesImagesOnSharedPort(t *testing.T) {
+	baseDir := t.TempDir()
+	imagesDir := filepath.Join(baseDir, "images")
+	if err := os.MkdirAll(imagesDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(imagesDir, "test.png"), []byte("png"), 0o644); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	server := NewServer(":0", nil)
+	server.staticDir = baseDir
+
+	testServer := httptest.NewServer(server.newMux())
+	defer testServer.Close()
+
+	resp, err := http.Get(testServer.URL + "/images/test.png")
+	if err != nil {
+		t.Fatalf("GET returned error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected status code: %d", resp.StatusCode)
+	}
+}
+
+func TestServerMuxReturnsNotFoundForMissingImage(t *testing.T) {
+	baseDir := t.TempDir()
+
+	server := NewServer(":0", nil)
+	server.staticDir = baseDir
+
+	testServer := httptest.NewServer(server.newMux())
+	defer testServer.Close()
+
+	resp, err := http.Get(testServer.URL + "/images/missing.png")
+	if err != nil {
+		t.Fatalf("GET returned error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("unexpected status code: %d", resp.StatusCode)
 	}
 }
 
