@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"math/rand"
 	"net"
 	"strings"
 	"testing"
@@ -86,6 +87,71 @@ func TestMatchCommandSupportsFaceWithoutSpace(t *testing.T) {
 	}
 	if len(match.Groups) < 2 || match.Groups[1] != "12" {
 		t.Fatalf("unexpected face match groups: %#v", match.Groups)
+	}
+}
+
+func TestMatchCommandSupportsDiceWithOptionalInnerSpaces(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	match := service.matchCommand(".2 d 6")
+	if match == nil || match.Command.Key != commandDice {
+		t.Fatalf("expected .2 d 6 to match dice command, got=%v", match)
+	}
+	if len(match.Groups) < 3 || match.Groups[1] != "2" || match.Groups[2] != "6" {
+		t.Fatalf("unexpected dice match groups: %#v", match.Groups)
+	}
+}
+
+func TestHandleDiceCommandReturnsCommaSeparatedRolls(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+	service.rng = rand.New(rand.NewSource(1))
+
+	match := service.matchCommand(".2d6")
+	if match == nil {
+		t.Fatal("expected dice command to match")
+	}
+
+	outbound, err := service.handleDiceCommand(context.Background(), "123", *match)
+	if err != nil {
+		t.Fatalf("handle dice command: %v", err)
+	}
+	if outbound == nil {
+		t.Fatal("expected outbound response")
+	}
+	if outbound.ShouldSave {
+		t.Fatal("dice command response should not be saved")
+	}
+	if outbound.Message != "6+4=10" {
+		t.Fatalf("unexpected dice output: %q", outbound.Message)
+	}
+}
+
+func TestHandleDiceCommandRejectsCountOverTwenty(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	match := service.matchCommand(".21d6")
+	if match == nil {
+		t.Fatal("expected dice command to match")
+	}
+
+	outbound, err := service.handleDiceCommand(context.Background(), "123", *match)
+	if err != nil {
+		t.Fatalf("handle dice command: %v", err)
+	}
+	if outbound == nil || outbound.Message != "太多啦，最多20次" {
+		t.Fatalf("unexpected outbound: %#v", outbound)
 	}
 }
 

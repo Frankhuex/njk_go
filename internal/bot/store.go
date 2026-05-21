@@ -89,10 +89,11 @@ func (s *Store) SaveAtUser(ctx context.Context, messageID string, userID string)
 	}).Error
 }
 
-func (s *Store) SaveImage(ctx context.Context, messageID string, imageHash string) (*model.Image, error) {
+func (s *Store) SaveImage(ctx context.Context, messageID string, imageHash string, imageURL string) (*model.Image, error) {
 	record := &model.Image{
 		MessageID: messageID,
 		ImageHash: imageHash,
+		URL:       nullableString(imageURL),
 	}
 	if err := s.db.WithContext(ctx).Create(record).Error; err != nil {
 		return nil, err
@@ -116,6 +117,9 @@ func (s *Store) AddWhitelistHash(ctx context.Context, imageHash string) error {
 }
 
 func (s *Store) RecentMessages(ctx context.Context, groupID string, limit int) ([]StoredMessage, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
 	var rows []StoredMessage
 	err := s.db.WithContext(ctx).
 		Table(`message AS m`).
@@ -132,6 +136,30 @@ func (s *Store) RecentMessages(ctx context.Context, groupID string, limit int) (
 	return rows, nil
 }
 
+func (s *Store) RecentMessageImages(ctx context.Context, groupID string, limit int) ([]model.Image, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
+
+	var rows []model.Image
+	recentMessageIDs := s.db.WithContext(ctx).
+		Table(`message AS m`).
+		Select(`m.message_id`).
+		Where("m.group_id = ?", groupID).
+		Order("m.time DESC").
+		Limit(limit)
+
+	err := s.db.WithContext(ctx).
+		Table(`image AS i`).
+		Select(`i.id, i.message_id, i.image_hash, i.url`).
+		Where("i.message_id IN (?)", recentMessageIDs).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
 func (s *Store) MessagesSince(ctx context.Context, groupID string, start time.Time) ([]StoredMessage, error) {
 	var rows []StoredMessage
 	err := s.db.WithContext(ctx).
@@ -144,14 +172,14 @@ func (s *Store) MessagesSince(ctx context.Context, groupID string, start time.Ti
 	return rows, err
 }
 
-func (s *Store) GroupImageCandidates(ctx context.Context, groupID string, excludeID int32) ([]StoredImage, error) {
+func (s *Store) GroupImageCandidates(ctx context.Context, groupID string, excludeImageID int32, excludeMessageID string) ([]StoredImage, error) {
 	var rows []StoredImage
 	err := s.db.WithContext(ctx).
 		Table(`image AS i`).
-		Select(`i.id, i.message_id, i.image_hash, m.time, COALESCE(m.sender_id, '') AS sender_id, COALESCE(u.nickname, '') AS nickname, COALESCE(m.card, '') AS card`).
+		Select(`i.id, i.message_id, i.image_hash, i.url, m.time, COALESCE(m.sender_id, '') AS sender_id, COALESCE(u.nickname, '') AS nickname, COALESCE(m.card, '') AS card`).
 		Joins(`JOIN message m ON i.message_id = m.message_id`).
 		Joins(`LEFT JOIN "user" u ON m.sender_id = u.user_id`).
-		Where("m.group_id = ? AND i.id <> ?", groupID, excludeID).
+		Where("m.group_id = ? AND i.id <> ? AND i.message_id <> ?", groupID, excludeImageID, excludeMessageID).
 		Scan(&rows).Error
 	return rows, err
 }
@@ -234,6 +262,13 @@ type StoredMessage struct {
 	RawJSON    string    `gorm:"column:raw_json"`
 }
 
+func nullableString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
 func (m StoredMessage) Format() string {
 	name := m.Card
 	if name == "" {
@@ -249,6 +284,7 @@ type StoredImage struct {
 	ID        int32     `gorm:"column:id"`
 	MessageID string    `gorm:"column:message_id"`
 	ImageHash string    `gorm:"column:image_hash"`
+	URL       *string   `gorm:"column:url"`
 	Time      time.Time `gorm:"column:time"`
 	SenderID  string    `gorm:"column:sender_id"`
 	Nickname  string    `gorm:"column:nickname"`

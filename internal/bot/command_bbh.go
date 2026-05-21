@@ -83,7 +83,7 @@ func (s *Service) handleBBHBook(ctx context.Context, bookID int) (string, error)
 	if !parasResp.Success {
 		return "获取段落失败", nil
 	}
-	return fmt.Sprintf("%d. %s\n----------\n%s", bookResp.Data.ID, bookResp.Data.Title, paragraphsToTitles(trimBoundaryParagraphs(parasResp.Data))), nil
+	return fmt.Sprintf("%d. %s\n----------\n%s", bookResp.Data.ID, bookResp.Data.Title, paragraphsToPreview(trimBoundaryParagraphs(parasResp.Data))), nil
 }
 
 func (s *Service) handleBBHParagraphs(ctx context.Context, bookID int, left int, right int) (string, error) {
@@ -131,7 +131,7 @@ func (s *Service) handleBBHAddParagraph(ctx context.Context, bookID int, author 
 	if !added.Success {
 		return "接龙失败", nil
 	}
-	return paragraphsToTitles(trimBoundaryParagraphs(paras)) + fmt.Sprintf("\n接龙成功: \n%d. %s", len(paras)-1, added.Data.Author), nil
+	return paragraphsToPreview(trimBoundaryParagraphs(paras)) + fmt.Sprintf("\n接龙成功: \n%d. %s", len(paras)-1, added.Data.Author), nil
 }
 
 func (s *Service) handleBBHAI(ctx context.Context, bookID int) (string, error) {
@@ -186,7 +186,7 @@ func (s *Service) handleBBHAI(ctx context.Context, bookID int) (string, error) {
 	if !added.Success {
 		return "接龙失败", nil
 	}
-	return paragraphsToTitles(trimBoundaryParagraphs(paras)) + fmt.Sprintf("\n接龙成功: \n%d. %s", len(paras)-1, added.Data.Author), nil
+	return paragraphsToPreview(trimBoundaryParagraphs(paras)) + fmt.Sprintf("\n接龙成功: \n%d. %s", len(paras)-1, added.Data.Author), nil
 }
 
 func trimBoundaryParagraphs(paras []bbh.Paragraph) []bbh.Paragraph {
@@ -196,10 +196,14 @@ func trimBoundaryParagraphs(paras []bbh.Paragraph) []bbh.Paragraph {
 	return paras[1 : len(paras)-1]
 }
 
-func paragraphsToTitles(paras []bbh.Paragraph) string {
+func paragraphsToPreview(paras []bbh.Paragraph) string {
 	lines := make([]string, 0, len(paras))
 	for i, para := range paras {
-		lines = append(lines, fmt.Sprintf("%d. %s", i+1, para.Author))
+		content := para.Author
+		if strings.TrimSpace(content) == "" {
+			content = para.Content[:min(len(para.Content), 60)]
+		}
+		lines = append(lines, fmt.Sprintf("%d. %s", i+1, content))
 	}
 	return strings.Join(lines, "\n")
 }

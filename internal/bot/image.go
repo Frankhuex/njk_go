@@ -43,7 +43,7 @@ func (s *ImageService) SaveAndCheckDuplicate(ctx context.Context, groupID string
 		return nil, err
 	}
 
-	record, err := s.store.SaveImage(ctx, messageID, hash)
+	record, err := s.store.SaveImage(ctx, messageID, hash, imageURL)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (s *ImageService) SaveAndCheckDuplicate(ctx context.Context, groupID string
 		return nil, nil
 	}
 
-	candidates, err := s.store.GroupImageCandidates(ctx, groupID, record.ID)
+	candidates, err := s.store.GroupImageCandidates(ctx, groupID, record.ID, messageID)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (s *ImageService) EnsureEmojiWhitelist(ctx context.Context, groupID string,
 	if err != nil {
 		return err
 	}
-	candidates, err := s.store.GroupImageCandidates(ctx, groupID, 0)
+	candidates, err := s.store.GroupImageCandidates(ctx, groupID, 0, "")
 	if err != nil {
 		return err
 	}

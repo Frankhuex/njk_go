@@ -8,9 +8,10 @@ const TableNameImage = "image"
 
 // Image mapped from table <image>
 type Image struct {
-	ID        int32  `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
-	MessageID string `gorm:"column:message_id;not null" json:"message_id"`
-	ImageHash string `gorm:"column:image_hash;not null" json:"image_hash"`
+	ID        int32   `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
+	MessageID string  `gorm:"column:message_id;not null" json:"message_id"`
+	ImageHash string  `gorm:"column:image_hash;not null" json:"image_hash"`
+	URL       *string `gorm:"column:url" json:"url"`
 }
 
 // TableName Image's table name

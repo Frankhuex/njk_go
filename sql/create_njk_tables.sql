@@ -70,7 +70,8 @@ CREATE INDEX IF NOT EXISTS idx_at_user_user_id
 CREATE TABLE IF NOT EXISTS image (
     id SERIAL PRIMARY KEY,
     message_id VARCHAR(30) NOT NULL REFERENCES message(message_id) ON DELETE CASCADE,
-    image_hash VARCHAR(100) NOT NULL
+    image_hash VARCHAR(100) NOT NULL,
+    url TEXT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_image_message_id

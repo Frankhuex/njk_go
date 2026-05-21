@@ -19,6 +19,10 @@ func simpleOutbound(groupID string, message string) *pendingOutbound {
 	return &pendingOutbound{GroupID: groupID, Message: message, ShouldSave: false}
 }
 
+func imageOutbound(groupID string, imageURLs []string) *pendingOutbound {
+	return &pendingOutbound{GroupID: groupID, ImageURLs: imageURLs, ShouldSave: false}
+}
+
 func insufficientHistory(groupID string) *pendingOutbound {
 	return simpleOutbound(groupID, "历史消息不足")
 }

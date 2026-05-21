@@ -21,6 +21,7 @@ type Config struct {
 	ModelName       string
 	FreeModelName   string
 	BBHBaseURL      string
+	MyURL           string
 	BotUserID       string
 	BotNickname     string
 	AllowedGroupIDs map[string]struct{}
@@ -51,9 +52,10 @@ func Load() (Config, error) {
 		BaseURL:       strings.TrimRight(value("BASE_URL", values, ""), "/"),
 		ModelName:     value("MODEL_NAME", values, ""),
 		FreeModelName: value("FREE_MODEL_NAME", values, ""),
-		BBHBaseURL:    strings.TrimRight(value("BBH_BASE_URL", values, "http://106.13.161.72:10000/api"), "/"),
+		BBHBaseURL:    strings.TrimRight(value("BBH_BASE_URL", values, ""), "/"),
+		MyURL:         strings.TrimRight(value("MY_URL", values, "http://localhost:11003"), "/"),
 		BotUserID:     value("BOT_USER_ID", values, ""),
-		BotNickname:   value("BOT_NICKNAME", values, ""),
+		BotNickname:   value("BOT_NICKNAME", values, "你居垦"),
 	}
 
 	port, err := strconv.Atoi(value("DB_PORT", values, "5432"))
@@ -63,9 +65,6 @@ func Load() (Config, error) {
 	cfg.DBPort = port
 	cfg.AllowedGroupIDs = parseGroupIDs(value("GROUP_IDS", values, ""))
 	cfg.BannedUserIDs = parseIDSet(value("BANNED_USER_IDS", values, ""))
-	if cfg.DBUser == "postgres" {
-		cfg.DBUser = "njk"
-	}
 
 	return cfg, nil
 }
