@@ -152,7 +152,9 @@ func (s *Store) RecentMessageImages(ctx context.Context, groupID string, limit i
 	err := s.db.WithContext(ctx).
 		Table(`image AS i`).
 		Select(`i.id, i.message_id, i.image_hash, i.url`).
+		Joins(`JOIN message m ON i.message_id = m.message_id`).
 		Where("i.message_id IN (?)", recentMessageIDs).
+		Order("m.time ASC, i.id ASC").
 		Scan(&rows).Error
 	if err != nil {
 		return nil, err

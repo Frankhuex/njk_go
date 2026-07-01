@@ -33,12 +33,12 @@ func (s *Service) saveIncomingMessageAndCheckImages(ctx context.Context, event *
 	var replyID *string
 	for _, segment := range event.Message.Segments {
 		switch segment.Type {
-		case "reply":
+		case napcat.SegmentTypeReply:
 			id := segment.Data.ID.String()
 			if id != "" {
 				replyID = &id
 			}
-		case "at":
+		case napcat.SegmentTypeAt:
 			userID := strings.TrimSpace(segment.Data.QQ)
 			if userID == "" {
 				continue
@@ -53,9 +53,9 @@ func (s *Service) saveIncomingMessageAndCheckImages(ctx context.Context, event *
 			} else {
 				textParts = append(textParts, "@"+userID)
 			}
-		case "text":
+		case napcat.SegmentTypeText:
 			textParts = append(textParts, segment.Data.Text)
-		case "image":
+		case napcat.SegmentTypeImage:
 			if isEmojiImage(segment) {
 				if err := s.imageService.EnsureEmojiWhitelist(ctx, groupID, segment.Data.URL); err != nil {
 					log.Printf("【表情白名单处理失败】group=%s err=%v", groupID, err)
@@ -68,7 +68,7 @@ func (s *Service) saveIncomingMessageAndCheckImages(ctx context.Context, event *
 			if segment.Data.Summary != "" {
 				textParts = append(textParts, fmt.Sprintf("[%s: %s]", segment.Type, segment.Data.Summary))
 			} else {
-				textParts = append(textParts, "["+segment.Type+"]")
+				textParts = append(textParts, "["+string(segment.Type)+"]")
 			}
 		}
 	}

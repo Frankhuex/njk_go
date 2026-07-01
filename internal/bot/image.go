@@ -10,11 +10,13 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/corona10/goimagehash"
+	_ "golang.org/x/image/webp"
 )
 
 const duplicateImageThreshold = 5
@@ -106,23 +108,28 @@ func (s *ImageService) SaveAndCheckDuplicate(ctx context.Context, groupID string
 func (s *ImageService) EnsureEmojiWhitelist(ctx context.Context, groupID string, imageURL string) error {
 	data, err := s.download(ctx, imageURL)
 	if err != nil {
+		log.Printf("【下载图片失败】group=%s url=%s err=%v", groupID, imageURL, err)
 		return err
 	}
 	hash, err := calculatePHash(data)
 	if err != nil {
+		log.Printf("【计算图片哈希失败】group=%s url=%s err=%v", groupID, imageURL, err)
 		return err
 	}
 	candidates, err := s.store.GroupImageCandidates(ctx, groupID, 0, "")
 	if err != nil {
+		log.Printf("【查询图片候选失败】group=%s err=%v", groupID, err)
 		return err
 	}
 	target, err := decodeHash(hash)
 	if err != nil {
+		log.Printf("【解码图片哈希失败】group=%s url=%s err=%v", groupID, imageURL, err)
 		return err
 	}
 	for _, candidate := range candidates {
 		source, err := decodeHash(candidate.ImageHash)
 		if err != nil {
+			log.Printf("【解码图片候选哈希失败】group=%s url=%s err=%v", groupID, candidate.ImageHash, err)
 			continue
 		}
 		if hammingDistance(target, source) <= duplicateImageThreshold {

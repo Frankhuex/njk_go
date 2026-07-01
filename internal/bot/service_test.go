@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"njk_go/internal/config"
+	"njk_go/internal/model"
 	"njk_go/internal/napcat"
 )
 
@@ -87,6 +88,157 @@ func TestMatchCommandSupportsFaceWithoutSpace(t *testing.T) {
 	}
 	if len(match.Groups) < 2 || match.Groups[1] != "12" {
 		t.Fatalf("unexpected face match groups: %#v", match.Groups)
+	}
+}
+
+func TestMatchCommandSupportsJSONWithOptionalSpace(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	for _, input := range []string{".json12", ".json 12"} {
+		match := service.matchCommand(input)
+		if match == nil || match.Command.Key != commandJSON {
+			t.Fatalf("expected %q to match json command, got=%v", input, match)
+		}
+		if len(match.Groups) < 2 || match.Groups[1] != "12" {
+			t.Fatalf("unexpected json match groups for %q: %#v", input, match.Groups)
+		}
+	}
+}
+
+func TestMatchCommandRejectsInvalidJSONCount(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	if match := service.matchCommand(".json abc"); match != nil {
+		t.Fatalf("expected invalid json command not to match, got=%v", match)
+	}
+}
+
+func TestMatchCommandSupportsFileWithOptionalSpace(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	for _, input := range []string{".file12", ".file 12"} {
+		match := service.matchCommand(input)
+		if match == nil || match.Command.Key != commandFile {
+			t.Fatalf("expected %q to match file command, got=%v", input, match)
+		}
+		if len(match.Groups) < 2 || match.Groups[1] != "12" {
+			t.Fatalf("unexpected file match groups for %q: %#v", input, match.Groups)
+		}
+	}
+}
+
+func TestMatchCommandRejectsInvalidFileCount(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	if match := service.matchCommand(".file abc"); match != nil {
+		t.Fatalf("expected invalid file command not to match, got=%v", match)
+	}
+}
+
+func TestImageToFileSourceURLsFromRecordsSkipsBlankURLs(t *testing.T) {
+	firstURL := " https://example.com/download?id=1 "
+	blankURL := "   "
+	secondURL := "https://example.com/download?id=2"
+
+	urls := imageToFileSourceURLsFromRecords([]model.Image{
+		{URL: nil},
+		{URL: &firstURL},
+		{URL: &blankURL},
+		{URL: &secondURL},
+	})
+
+	if len(urls) != 2 {
+		t.Fatalf("expected 2 urls, got=%d: %#v", len(urls), urls)
+	}
+	if urls[0] != "https://example.com/download?id=1" || urls[1] != "https://example.com/download?id=2" {
+		t.Fatalf("unexpected urls: %#v", urls)
+	}
+}
+
+func TestFileSegmentNameFromImageDataForcesGIFExtension(t *testing.T) {
+	gifData := []byte("GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x00\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;")
+
+	got := fileSegmentNameFromImageData(0, "https://example.com/image.png", gifData)
+	if got != "image_1.gif" {
+		t.Fatalf("expected gif extension for decodable gif data, got=%s", got)
+	}
+
+	pngHeader := []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}
+	got = fileSegmentNameFromImageData(1, "https://example.com/download", pngHeader)
+	if got != "image_2.png" {
+		t.Fatalf("expected png fallback for non-gif data, got=%s", got)
+	}
+}
+
+func TestImageAndFileOutboundSegmentTypes(t *testing.T) {
+	image := imageOutbound("123", []string{"https://example.com/a.png"})
+	if image.ImageSegmentType != napcat.SegmentTypeImage {
+		t.Fatalf("image outbound should use image segment, got=%s", image.ImageSegmentType)
+	}
+
+	file := fileOutbound("123", []string{"https://example.com/a.gif"})
+	if file.ImageSegmentType != napcat.SegmentTypeFile {
+		t.Fatalf("file outbound should use file segment, got=%s", file.ImageSegmentType)
+	}
+	if len(file.ImageURLs) != 1 || file.ImageURLs[0] != "https://example.com/a.gif" {
+		t.Fatalf("file outbound should keep image urls, got=%#v", file.ImageURLs)
+	}
+	if file.ShouldSave {
+		t.Fatal("file outbound should not be saved")
+	}
+}
+
+func TestFormatRawJSONMessagesPreservesJSONTypes(t *testing.T) {
+	result, err := formatRawJSONMessages([]StoredMessage{
+		{RawJSON: `[{"type":"text","data":{"text":"hi"}}]`},
+		{RawJSON: `"bot reply"`},
+		{RawJSON: ``},
+	})
+	if err != nil {
+		t.Fatalf("format raw json messages: %v", err)
+	}
+	parts := strings.Split(result, "\n\n")
+	if len(parts) != 3 {
+		t.Fatalf("expected 3 formatted raw json values, got=%d: %q", len(parts), result)
+	}
+
+	if !strings.Contains(parts[0], "\n    ") {
+		t.Fatalf("expected formatted json with four-space indentation, got=%q", parts[0])
+	}
+
+	var segments []napcat.MessageSegment
+	if err := json.Unmarshal([]byte(parts[0]), &segments); err != nil {
+		t.Fatalf("first value should remain a segment array: %v", err)
+	}
+	if len(segments) != 1 || segments[0].Type != "text" || segments[0].Data.Text != "hi" {
+		t.Fatalf("unexpected first value: %#v", segments)
+	}
+
+	var botReply string
+	if err := json.Unmarshal([]byte(parts[1]), &botReply); err != nil {
+		t.Fatalf("second value should remain a json string: %v", err)
+	}
+	if botReply != "bot reply" {
+		t.Fatalf("unexpected second value: %q", botReply)
+	}
+	if parts[2] != "null" {
+		t.Fatalf("expected empty raw json to become null, got=%s", parts[2])
 	}
 }
 

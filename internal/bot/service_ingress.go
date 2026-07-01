@@ -1,10 +1,13 @@
 package bot
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"image/gif"
 	"log"
+	"net/http"
 	"strings"
 	"time"
 
@@ -102,7 +105,11 @@ func (s *Service) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 			}
 		}
 		if len(response.ImageURLs) > 0 {
-			if err := s.multiSendGroupImages(ctx, conn, response.GroupID, response.ImageURLs); err != nil {
+			segmentType := response.ImageSegmentType
+			if segmentType == "" {
+				segmentType = napcat.SegmentTypeImage
+			}
+			if err := s.multiSendGroupImages(ctx, conn, response.GroupID, response.ImageURLs, segmentType); err != nil {
 				log.Printf("【发送图片响应失败】%s - %v", clientAddr, err)
 			}
 		}
@@ -165,45 +172,27 @@ func (s *Service) sendGroupText(ctx context.Context, conn outboundWriter, groupI
 	return nil
 }
 
-func (s *Service) sendGroupImage(ctx context.Context, conn outboundWriter, groupID string, imgURL string) error {
-	req := napcat.SendGroupMsgRequest{
-		Action: "send_group_msg",
-		Params: napcat.SendGroupMsgParams{
-			GroupID: napcat.ID(groupID),
-			Message: napcat.NewSegmentMessage(napcat.MessageSegment{
-				Type: "image",
-				Data: napcat.MessageSegmentData{
-					File: imgURL,
-				},
-			}),
-		},
-	}
-	data, err := json.Marshal(req)
-	if err != nil {
-		return err
-	}
-	if err := conn.WriteText(data); err != nil {
-		return err
-	}
-	s.pending.Push(pendingMessage{
-		GroupID:    groupID,
-		Message:    "",
-		SentAt:     time.Now(),
-		ShouldSave: false,
-	})
-	log.Printf("【发送群图片】group=%s should_save=%t img_url=%s", groupID, false, imgURL)
-	return nil
-}
-
-func (s *Service) multiSendGroupImages(ctx context.Context, conn outboundWriter, groupID string, imgURLs []string) error {
+// segmentType必须为image或file
+func (s *Service) multiSendGroupImages(ctx context.Context, conn outboundWriter, groupID string, imgURLs []string, segmentType napcat.SegmentType) error {
 	segments := []napcat.MessageSegment{}
-	for _, imgURL := range imgURLs {
+	sentURLs := make([]string, 0, len(imgURLs))
+	for idx, imgURL := range imgURLs {
+		url := strings.TrimSpace(imgURL)
+		if url == "" {
+			continue
+		}
+		sentURLs = append(sentURLs, url)
+		data := napcat.MessageSegmentData{File: url}
+		if segmentType == napcat.SegmentTypeFile {
+			data.Name = s.fileSegmentName(ctx, idx, url)
+		}
 		segments = append(segments, napcat.MessageSegment{
-			Type: "image",
-			Data: napcat.MessageSegmentData{
-				File: imgURL,
-			},
+			Type: segmentType,
+			Data: data,
 		})
+	}
+	if len(segments) == 0 {
+		return nil
 	}
 	req := napcat.SendGroupMsgRequest{
 		Action: "send_group_msg",
@@ -225,8 +214,47 @@ func (s *Service) multiSendGroupImages(ctx context.Context, conn outboundWriter,
 		SentAt:     time.Now(),
 		ShouldSave: false,
 	})
-	log.Printf("【发送群图片】group=%s should_save=%t img_url=%s", groupID, false, strings.Join(imgURLs, ","))
+	log.Printf("【发送群图片】group=%s should_save=%t img_url=%s", groupID, false, strings.Join(sentURLs, ","))
 	return nil
+}
+
+func (s *Service) fileSegmentName(ctx context.Context, index int, sourceURL string) string {
+	data, err := s.imageService.download(ctx, sourceURL)
+	if err != nil {
+		log.Printf("【识别文件类型失败】url=%s err=%v", sourceURL, err)
+		return fallbackFileSegmentName(index, sourceURL)
+	}
+	return fileSegmentNameFromImageData(index, sourceURL, data)
+}
+
+func fileSegmentNameFromImageData(index int, sourceURL string, data []byte) string {
+	ext := fallbackImageExt(sourceURL, data)
+	if _, err := gif.DecodeAll(bytes.NewReader(data)); err == nil {
+		ext = ".gif"
+	}
+	return fmt.Sprintf("image_%d%s", index+1, ext)
+}
+
+func fallbackFileSegmentName(index int, sourceURL string) string {
+	ext := normalizedImageExt(sourceURL)
+	if ext == "" {
+		ext = ".png"
+	}
+	return fmt.Sprintf("image_%d%s", index+1, ext)
+}
+
+func fallbackImageExt(sourceURL string, data []byte) string {
+	contentType := strings.ToLower(http.DetectContentType(data))
+	switch {
+	case strings.Contains(contentType, "image/jpeg"), strings.Contains(contentType, "image/jpg"):
+		return ".jpg"
+	case strings.Contains(contentType, "image/png"):
+		return ".png"
+	}
+	if ext := normalizedImageExt(sourceURL); ext != "" {
+		return ext
+	}
+	return ".png"
 }
 
 func (s *Service) setMsgEmojiLike(ctx context.Context, conn outboundWriter, messageID string, emojiID string) error {

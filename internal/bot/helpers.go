@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+
+	"njk_go/internal/napcat"
 )
 
 func (s *Service) systemPrompt(key commandKey) (string, error) {
@@ -20,7 +22,11 @@ func simpleOutbound(groupID string, message string) *pendingOutbound {
 }
 
 func imageOutbound(groupID string, imageURLs []string) *pendingOutbound {
-	return &pendingOutbound{GroupID: groupID, ImageURLs: imageURLs, ShouldSave: false}
+	return &pendingOutbound{GroupID: groupID, ImageURLs: imageURLs, ImageSegmentType: napcat.SegmentTypeImage, ShouldSave: false}
+}
+
+func fileOutbound(groupID string, imageURLs []string) *pendingOutbound {
+	return &pendingOutbound{GroupID: groupID, ImageURLs: imageURLs, ImageSegmentType: napcat.SegmentTypeFile, ShouldSave: false}
 }
 
 func insufficientHistory(groupID string) *pendingOutbound {
