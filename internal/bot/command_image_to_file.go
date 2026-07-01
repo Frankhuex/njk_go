@@ -2,11 +2,10 @@ package bot
 
 import (
 	"context"
-	"encoding/json"
 	"strconv"
 	"strings"
 
-	"njk_go/internal/napcat"
+	"njk_go/internal/model"
 )
 
 func (s *Service) handleImageToFileCommand(ctx context.Context, groupID string, match matchedCommand) (*pendingOutbound, error) {
@@ -19,38 +18,29 @@ func (s *Service) handleImageToFileCommand(ctx context.Context, groupID string, 
 		return simpleOutbound(groupID, "参数错误"), nil
 	}
 
-	history, err := s.store.RecentMessages(ctx, groupID, count)
+	images, err := s.store.RecentMessageImages(ctx, groupID, count)
 	if err != nil {
 		return nil, err
 	}
 
-	files := imageToFileItemsFromMessages(history)
-	if len(files) == 0 {
+	fileURLs := imageToFileSourceURLsFromRecords(images)
+	if len(fileURLs) == 0 {
 		return simpleOutbound(groupID, "最近消息里没有图片"), nil
 	}
-	return fileOutbound(groupID, files), nil
+	return fileOutbound(groupID, fileURLs), nil
 }
 
-func imageToFileItemsFromMessages(messages []StoredMessage) []outboundFile {
-	files := make([]outboundFile, 0)
-	for _, message := range messages {
-		var segments []napcat.MessageSegment
-		if err := json.Unmarshal([]byte(message.RawJSON), &segments); err != nil {
+func imageToFileSourceURLsFromRecords(images []model.Image) []string {
+	urls := make([]string, 0, len(images))
+	for _, image := range images {
+		if image.URL == nil {
 			continue
 		}
-		for _, segment := range segments {
-			if segment.Type != napcat.SegmentTypeImage {
-				continue
-			}
-			url := strings.TrimSpace(segment.Data.URL)
-			if url == "" {
-				continue
-			}
-			files = append(files, outboundFile{
-				URL:      url,
-				FileName: strings.TrimSpace(segment.Data.File),
-			})
+		url := strings.TrimSpace(*image.URL)
+		if url == "" {
+			continue
 		}
+		urls = append(urls, url)
 	}
-	return files
+	return urls
 }

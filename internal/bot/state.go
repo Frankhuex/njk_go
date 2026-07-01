@@ -10,16 +10,11 @@ import (
 type pendingOutbound struct {
 	GroupID            string
 	Message            string
-	ImageFiles         []outboundFile
+	ImageURLs          []string
 	ImageSegmentType   napcat.SegmentType
 	ShouldSave         bool
 	EmojiLikeMessageID string
 	EmojiLikeIDs       []string
-}
-
-type outboundFile struct {
-	URL      string
-	FileName string
 }
 
 type pendingMessage struct {

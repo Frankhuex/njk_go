@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"njk_go/internal/config"
+	"njk_go/internal/model"
 	"njk_go/internal/napcat"
 )
 
@@ -150,48 +151,38 @@ func TestMatchCommandRejectsInvalidFileCount(t *testing.T) {
 	}
 }
 
-func TestImageToFileItemsFromMessagesUsesRawJSONFileNames(t *testing.T) {
-	rawJSONBytes, err := json.Marshal([]napcat.MessageSegment{
-		napcat.NewTextSegment("hi"),
-		{
-			Type: napcat.SegmentTypeImage,
-			Data: napcat.MessageSegmentData{
-				URL:  " https://example.com/download?id=1 ",
-				File: "abc.png",
-			},
-		},
-		{
-			Type: napcat.SegmentTypeImage,
-			Data: napcat.MessageSegmentData{
-				URL:  "   ",
-				File: "skip.jpg",
-			},
-		},
-		{
-			Type: napcat.SegmentTypeImage,
-			Data: napcat.MessageSegmentData{
-				URL:  "https://example.com/download?id=2",
-				File: "anim.gif",
-			},
-		},
-	})
-	if err != nil {
-		t.Fatalf("marshal raw json: %v", err)
-	}
+func TestImageToFileSourceURLsFromRecordsSkipsBlankURLs(t *testing.T) {
+	firstURL := " https://example.com/download?id=1 "
+	blankURL := "   "
+	secondURL := "https://example.com/download?id=2"
 
-	files := imageToFileItemsFromMessages([]StoredMessage{
-		{RawJSON: string(rawJSONBytes)},
-		{RawJSON: `"bot reply"`},
+	urls := imageToFileSourceURLsFromRecords([]model.Image{
+		{URL: nil},
+		{URL: &firstURL},
+		{URL: &blankURL},
+		{URL: &secondURL},
 	})
 
-	if len(files) != 2 {
-		t.Fatalf("expected 2 files, got=%d: %#v", len(files), files)
+	if len(urls) != 2 {
+		t.Fatalf("expected 2 urls, got=%d: %#v", len(urls), urls)
 	}
-	if files[0] != (outboundFile{URL: "https://example.com/download?id=1", FileName: "abc.png"}) {
-		t.Fatalf("unexpected first file: %#v", files[0])
+	if urls[0] != "https://example.com/download?id=1" || urls[1] != "https://example.com/download?id=2" {
+		t.Fatalf("unexpected urls: %#v", urls)
 	}
-	if files[1] != (outboundFile{URL: "https://example.com/download?id=2", FileName: "anim.gif"}) {
-		t.Fatalf("unexpected second file: %#v", files[1])
+}
+
+func TestFileSegmentNameFromImageDataForcesGIFExtension(t *testing.T) {
+	gifData := []byte("GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x00\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;")
+
+	got := fileSegmentNameFromImageData(0, "https://example.com/image.png", gifData)
+	if got != "image_1.gif" {
+		t.Fatalf("expected gif extension for decodable gif data, got=%s", got)
+	}
+
+	pngHeader := []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}
+	got = fileSegmentNameFromImageData(1, "https://example.com/download", pngHeader)
+	if got != "image_2.png" {
+		t.Fatalf("expected png fallback for non-gif data, got=%s", got)
 	}
 }
 
@@ -201,12 +192,12 @@ func TestImageAndFileOutboundSegmentTypes(t *testing.T) {
 		t.Fatalf("image outbound should use image segment, got=%s", image.ImageSegmentType)
 	}
 
-	file := fileOutbound("123", []outboundFile{{URL: "https://example.com/a.gif", FileName: "a.gif"}})
+	file := fileOutbound("123", []string{"https://example.com/a.gif"})
 	if file.ImageSegmentType != napcat.SegmentTypeFile {
 		t.Fatalf("file outbound should use file segment, got=%s", file.ImageSegmentType)
 	}
-	if len(file.ImageFiles) != 1 || file.ImageFiles[0].FileName != "a.gif" {
-		t.Fatalf("file outbound should keep file names, got=%#v", file.ImageFiles)
+	if len(file.ImageURLs) != 1 || file.ImageURLs[0] != "https://example.com/a.gif" {
+		t.Fatalf("file outbound should keep image urls, got=%#v", file.ImageURLs)
 	}
 	if file.ShouldSave {
 		t.Fatal("file outbound should not be saved")
