@@ -11,6 +11,8 @@ import (
 	"njk_go/internal/napcat"
 )
 
+type SegmentType string
+
 func (s *Service) HandleNotice(ctx context.Context, conn outboundWriter, clientAddr string, event *napcat.NoticeEvent) {
 	if event == nil {
 		return
@@ -102,7 +104,7 @@ func (s *Service) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 			}
 		}
 		if len(response.ImageURLs) > 0 {
-			if err := s.multiSendGroupImages(ctx, conn, response.GroupID, response.ImageURLs); err != nil {
+			if err := s.multiSendGroupImages(ctx, conn, response.GroupID, response.ImageURLs, napcat.SegmentTypeImage); err != nil {
 				log.Printf("【发送图片响应失败】%s - %v", clientAddr, err)
 			}
 		}
@@ -165,41 +167,12 @@ func (s *Service) sendGroupText(ctx context.Context, conn outboundWriter, groupI
 	return nil
 }
 
-func (s *Service) sendGroupImage(ctx context.Context, conn outboundWriter, groupID string, imgURL string) error {
-	req := napcat.SendGroupMsgRequest{
-		Action: "send_group_msg",
-		Params: napcat.SendGroupMsgParams{
-			GroupID: napcat.ID(groupID),
-			Message: napcat.NewSegmentMessage(napcat.MessageSegment{
-				Type: "image",
-				Data: napcat.MessageSegmentData{
-					File: imgURL,
-				},
-			}),
-		},
-	}
-	data, err := json.Marshal(req)
-	if err != nil {
-		return err
-	}
-	if err := conn.WriteText(data); err != nil {
-		return err
-	}
-	s.pending.Push(pendingMessage{
-		GroupID:    groupID,
-		Message:    "",
-		SentAt:     time.Now(),
-		ShouldSave: false,
-	})
-	log.Printf("【发送群图片】group=%s should_save=%t img_url=%s", groupID, false, imgURL)
-	return nil
-}
-
-func (s *Service) multiSendGroupImages(ctx context.Context, conn outboundWriter, groupID string, imgURLs []string) error {
+// segmentType必须为image或file
+func (s *Service) multiSendGroupImages(ctx context.Context, conn outboundWriter, groupID string, imgURLs []string, segmentType napcat.SegmentType) error {
 	segments := []napcat.MessageSegment{}
 	for _, imgURL := range imgURLs {
 		segments = append(segments, napcat.MessageSegment{
-			Type: "image",
+			Type: segmentType,
 			Data: napcat.MessageSegmentData{
 				File: imgURL,
 			},

@@ -90,6 +90,77 @@ func TestMatchCommandSupportsFaceWithoutSpace(t *testing.T) {
 	}
 }
 
+func TestMatchCommandSupportsJSONWithOptionalSpace(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	for _, input := range []string{".json12", ".json 12"} {
+		match := service.matchCommand(input)
+		if match == nil || match.Command.Key != commandJSON {
+			t.Fatalf("expected %q to match json command, got=%v", input, match)
+		}
+		if len(match.Groups) < 2 || match.Groups[1] != "12" {
+			t.Fatalf("unexpected json match groups for %q: %#v", input, match.Groups)
+		}
+	}
+}
+
+func TestMatchCommandRejectsInvalidJSONCount(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	if match := service.matchCommand(".json abc"); match != nil {
+		t.Fatalf("expected invalid json command not to match, got=%v", match)
+	}
+}
+
+func TestFormatRawJSONMessagesPreservesJSONTypes(t *testing.T) {
+	result, err := formatRawJSONMessages([]StoredMessage{
+		{RawJSON: `[{"type":"text","data":{"text":"hi"}}]`},
+		{RawJSON: `"bot reply"`},
+		{RawJSON: ``},
+	})
+	if err != nil {
+		t.Fatalf("format raw json messages: %v", err)
+	}
+	if !strings.Contains(result, "\n ") {
+		t.Fatalf("expected formatted json with one-space indentation, got=%q", result)
+	}
+
+	var values []json.RawMessage
+	if err := json.Unmarshal([]byte(result), &values); err != nil {
+		t.Fatalf("result should be a json array: %v", err)
+	}
+	if len(values) != 3 {
+		t.Fatalf("expected 3 raw json values, got=%d", len(values))
+	}
+
+	var segments []napcat.MessageSegment
+	if err := json.Unmarshal(values[0], &segments); err != nil {
+		t.Fatalf("first value should remain a segment array: %v", err)
+	}
+	if len(segments) != 1 || segments[0].Type != "text" || segments[0].Data.Text != "hi" {
+		t.Fatalf("unexpected first value: %#v", segments)
+	}
+
+	var botReply string
+	if err := json.Unmarshal(values[1], &botReply); err != nil {
+		t.Fatalf("second value should remain a json string: %v", err)
+	}
+	if botReply != "bot reply" {
+		t.Fatalf("unexpected second value: %q", botReply)
+	}
+	if string(values[2]) != "null" {
+		t.Fatalf("expected empty raw json to become null, got=%s", values[2])
+	}
+}
+
 func TestMatchCommandSupportsDiceWithOptionalInnerSpaces(t *testing.T) {
 	service := NewService(config.Config{
 		BotUserID:       "1558109748",

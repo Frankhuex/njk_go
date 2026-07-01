@@ -265,9 +265,19 @@ func (p MessagePayload) StringValue() string {
 	return *p.Text
 }
 
+type SegmentType string
+
+const (
+	SegmentTypeText  SegmentType = "text"
+	SegmentTypeAt    SegmentType = "at"
+	SegmentTypeImage SegmentType = "image"
+	SegmentTypeReply SegmentType = "reply"
+	SegmentTypeFile  SegmentType = "file"
+)
+
 // MessageSegment 对应 NapCat 文档里的 OB11MessageData 单个消息段。
 type MessageSegment struct {
-	Type string             `json:"type"`
+	Type SegmentType        `json:"type"`
 	Data MessageSegmentData `json:"data"`
 }
 
@@ -298,21 +308,21 @@ type MessageSegmentData struct {
 
 func NewTextSegment(text string) MessageSegment {
 	return MessageSegment{
-		Type: "text",
+		Type: SegmentTypeText,
 		Data: MessageSegmentData{Text: text},
 	}
 }
 
 func NewAtSegment(qq string, name string) MessageSegment {
 	return MessageSegment{
-		Type: "at",
+		Type: SegmentTypeAt,
 		Data: MessageSegmentData{QQ: qq, Name: name},
 	}
 }
 
 func NewReplySegment(id ID) MessageSegment {
 	return MessageSegment{
-		Type: "reply",
+		Type: SegmentTypeReply,
 		Data: MessageSegmentData{ID: id},
 	}
 }
