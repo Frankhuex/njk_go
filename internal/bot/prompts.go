@@ -19,6 +19,7 @@ const (
 	commandReport             commandKey = "report"
 	commandFace               commandKey = "face"
 	commandJSON               commandKey = "json"
+	commandFile               commandKey = "file"
 	commandDice               commandKey = "dice"
 	commandSymmetricLeft      commandKey = "symmetric_left"
 	commandSymmetricRight     commandKey = "symmetric_right"
@@ -51,6 +52,7 @@ var helpText = `.概括 .总结 .俳句 .无只因 .最 .vs .ccb .xmas
 .报告 后面需要接数字，表示报告查询的天数
 .face 后面接数字，表示读取本群最近消息里的系统表情并贴到这条指令上
 .json 后面接数字，表示返回本群最近已保存消息的raw_json
+.file 后面接数字，表示把本群最近消息里的图片/动图作为文件发出
 .2d6 掷2次6面骰子，支持写成 .2 d 6
 .对称左/.对称右/.对称上/.对称下 生成对应方向的半边对称图
 .对称左上/.对称右上/.对称左下/.对称右下 生成对应角来源的四象限对称图
@@ -206,6 +208,10 @@ ccb句式形如“豌豆笑传之踩踩背”。
 		{
 			Key:     commandJSON,
 			Pattern: `^ *\.json *(\d+) *$`,
+		},
+		{
+			Key:     commandFile,
+			Pattern: `^ *\.file *(\d+) *$`,
 		},
 		{
 			Key:     commandDice,

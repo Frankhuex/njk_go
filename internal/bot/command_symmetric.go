@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/gif"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -189,7 +190,9 @@ func normalizedImageExt(sourceURL string) string {
 	if err == nil && parsed.Path != "" {
 		return strings.ToLower(path.Ext(parsed.Path))
 	}
-	return strings.ToLower(filepath.Ext(sourceURL))
+	ext := strings.ToLower(filepath.Ext(sourceURL))
+	log.Printf("【检测图片类型】url=%s ext=%s", sourceURL, ext)
+	return ext
 }
 
 func symmetricFileBase(messageID string, imageID int32) string {

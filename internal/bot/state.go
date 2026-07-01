@@ -3,15 +3,23 @@ package bot
 import (
 	"sync"
 	"time"
+
+	"njk_go/internal/napcat"
 )
 
 type pendingOutbound struct {
 	GroupID            string
 	Message            string
-	ImageURLs          []string
+	ImageFiles         []outboundFile
+	ImageSegmentType   napcat.SegmentType
 	ShouldSave         bool
 	EmojiLikeMessageID string
 	EmojiLikeIDs       []string
+}
+
+type outboundFile struct {
+	URL      string
+	FileName string
 }
 
 type pendingMessage struct {

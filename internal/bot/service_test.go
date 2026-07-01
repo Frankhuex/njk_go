@@ -120,6 +120,99 @@ func TestMatchCommandRejectsInvalidJSONCount(t *testing.T) {
 	}
 }
 
+func TestMatchCommandSupportsFileWithOptionalSpace(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	for _, input := range []string{".file12", ".file 12"} {
+		match := service.matchCommand(input)
+		if match == nil || match.Command.Key != commandFile {
+			t.Fatalf("expected %q to match file command, got=%v", input, match)
+		}
+		if len(match.Groups) < 2 || match.Groups[1] != "12" {
+			t.Fatalf("unexpected file match groups for %q: %#v", input, match.Groups)
+		}
+	}
+}
+
+func TestMatchCommandRejectsInvalidFileCount(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	if match := service.matchCommand(".file abc"); match != nil {
+		t.Fatalf("expected invalid file command not to match, got=%v", match)
+	}
+}
+
+func TestImageToFileItemsFromMessagesUsesRawJSONFileNames(t *testing.T) {
+	rawJSONBytes, err := json.Marshal([]napcat.MessageSegment{
+		napcat.NewTextSegment("hi"),
+		{
+			Type: napcat.SegmentTypeImage,
+			Data: napcat.MessageSegmentData{
+				URL:  " https://example.com/download?id=1 ",
+				File: "abc.png",
+			},
+		},
+		{
+			Type: napcat.SegmentTypeImage,
+			Data: napcat.MessageSegmentData{
+				URL:  "   ",
+				File: "skip.jpg",
+			},
+		},
+		{
+			Type: napcat.SegmentTypeImage,
+			Data: napcat.MessageSegmentData{
+				URL:  "https://example.com/download?id=2",
+				File: "anim.gif",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal raw json: %v", err)
+	}
+
+	files := imageToFileItemsFromMessages([]StoredMessage{
+		{RawJSON: string(rawJSONBytes)},
+		{RawJSON: `"bot reply"`},
+	})
+
+	if len(files) != 2 {
+		t.Fatalf("expected 2 files, got=%d: %#v", len(files), files)
+	}
+	if files[0] != (outboundFile{URL: "https://example.com/download?id=1", FileName: "abc.png"}) {
+		t.Fatalf("unexpected first file: %#v", files[0])
+	}
+	if files[1] != (outboundFile{URL: "https://example.com/download?id=2", FileName: "anim.gif"}) {
+		t.Fatalf("unexpected second file: %#v", files[1])
+	}
+}
+
+func TestImageAndFileOutboundSegmentTypes(t *testing.T) {
+	image := imageOutbound("123", []string{"https://example.com/a.png"})
+	if image.ImageSegmentType != napcat.SegmentTypeImage {
+		t.Fatalf("image outbound should use image segment, got=%s", image.ImageSegmentType)
+	}
+
+	file := fileOutbound("123", []outboundFile{{URL: "https://example.com/a.gif", FileName: "a.gif"}})
+	if file.ImageSegmentType != napcat.SegmentTypeFile {
+		t.Fatalf("file outbound should use file segment, got=%s", file.ImageSegmentType)
+	}
+	if len(file.ImageFiles) != 1 || file.ImageFiles[0].FileName != "a.gif" {
+		t.Fatalf("file outbound should keep file names, got=%#v", file.ImageFiles)
+	}
+	if file.ShouldSave {
+		t.Fatal("file outbound should not be saved")
+	}
+}
+
 func TestFormatRawJSONMessagesPreservesJSONTypes(t *testing.T) {
 	result, err := formatRawJSONMessages([]StoredMessage{
 		{RawJSON: `[{"type":"text","data":{"text":"hi"}}]`},
@@ -129,20 +222,17 @@ func TestFormatRawJSONMessagesPreservesJSONTypes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("format raw json messages: %v", err)
 	}
-	if !strings.Contains(result, "\n ") {
-		t.Fatalf("expected formatted json with one-space indentation, got=%q", result)
+	parts := strings.Split(result, "\n\n")
+	if len(parts) != 3 {
+		t.Fatalf("expected 3 formatted raw json values, got=%d: %q", len(parts), result)
 	}
 
-	var values []json.RawMessage
-	if err := json.Unmarshal([]byte(result), &values); err != nil {
-		t.Fatalf("result should be a json array: %v", err)
-	}
-	if len(values) != 3 {
-		t.Fatalf("expected 3 raw json values, got=%d", len(values))
+	if !strings.Contains(parts[0], "\n    ") {
+		t.Fatalf("expected formatted json with four-space indentation, got=%q", parts[0])
 	}
 
 	var segments []napcat.MessageSegment
-	if err := json.Unmarshal(values[0], &segments); err != nil {
+	if err := json.Unmarshal([]byte(parts[0]), &segments); err != nil {
 		t.Fatalf("first value should remain a segment array: %v", err)
 	}
 	if len(segments) != 1 || segments[0].Type != "text" || segments[0].Data.Text != "hi" {
@@ -150,14 +240,14 @@ func TestFormatRawJSONMessagesPreservesJSONTypes(t *testing.T) {
 	}
 
 	var botReply string
-	if err := json.Unmarshal(values[1], &botReply); err != nil {
+	if err := json.Unmarshal([]byte(parts[1]), &botReply); err != nil {
 		t.Fatalf("second value should remain a json string: %v", err)
 	}
 	if botReply != "bot reply" {
 		t.Fatalf("unexpected second value: %q", botReply)
 	}
-	if string(values[2]) != "null" {
-		t.Fatalf("expected empty raw json to become null, got=%s", values[2])
+	if parts[2] != "null" {
+		t.Fatalf("expected empty raw json to become null, got=%s", parts[2])
 	}
 }
 

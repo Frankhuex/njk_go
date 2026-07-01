@@ -11,8 +11,6 @@ import (
 	"njk_go/internal/napcat"
 )
 
-type SegmentType string
-
 func (s *Service) HandleNotice(ctx context.Context, conn outboundWriter, clientAddr string, event *napcat.NoticeEvent) {
 	if event == nil {
 		return
@@ -103,8 +101,12 @@ func (s *Service) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 				log.Printf("【发送响应失败】%s - %v", clientAddr, err)
 			}
 		}
-		if len(response.ImageURLs) > 0 {
-			if err := s.multiSendGroupImages(ctx, conn, response.GroupID, response.ImageURLs, napcat.SegmentTypeImage); err != nil {
+		if len(response.ImageFiles) > 0 {
+			segmentType := response.ImageSegmentType
+			if segmentType == "" {
+				segmentType = napcat.SegmentTypeImage
+			}
+			if err := s.multiSendGroupImages(ctx, conn, response.GroupID, response.ImageFiles, segmentType); err != nil {
 				log.Printf("【发送图片响应失败】%s - %v", clientAddr, err)
 			}
 		}
@@ -168,15 +170,23 @@ func (s *Service) sendGroupText(ctx context.Context, conn outboundWriter, groupI
 }
 
 // segmentType必须为image或file
-func (s *Service) multiSendGroupImages(ctx context.Context, conn outboundWriter, groupID string, imgURLs []string, segmentType napcat.SegmentType) error {
+func (s *Service) multiSendGroupImages(ctx context.Context, conn outboundWriter, groupID string, files []outboundFile, segmentType napcat.SegmentType) error {
 	segments := []napcat.MessageSegment{}
-	for _, imgURL := range imgURLs {
+	for _, file := range files {
+		url := strings.TrimSpace(file.URL)
+		if url == "" {
+			continue
+		}
 		segments = append(segments, napcat.MessageSegment{
 			Type: segmentType,
 			Data: napcat.MessageSegmentData{
-				File: imgURL,
+				File: url,
+				Name: strings.TrimSpace(file.FileName),
 			},
 		})
+	}
+	if len(segments) == 0 {
+		return nil
 	}
 	req := napcat.SendGroupMsgRequest{
 		Action: "send_group_msg",
@@ -198,7 +208,7 @@ func (s *Service) multiSendGroupImages(ctx context.Context, conn outboundWriter,
 		SentAt:     time.Now(),
 		ShouldSave: false,
 	})
-	log.Printf("【发送群图片】group=%s should_save=%t img_url=%s", groupID, false, strings.Join(imgURLs, ","))
+	log.Printf("【发送群图片】group=%s should_save=%t files=%v", groupID, false, files)
 	return nil
 }
 
