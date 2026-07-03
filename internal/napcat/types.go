@@ -270,6 +270,7 @@ type SegmentType string
 const (
 	SegmentTypeText  SegmentType = "text"
 	SegmentTypeAt    SegmentType = "at"
+	SegmentTypeFace  SegmentType = "face"
 	SegmentTypeImage SegmentType = "image"
 	SegmentTypeReply SegmentType = "reply"
 	SegmentTypeFile  SegmentType = "file"
@@ -317,6 +318,13 @@ func NewAtSegment(qq string, name string) MessageSegment {
 	return MessageSegment{
 		Type: SegmentTypeAt,
 		Data: MessageSegmentData{QQ: qq, Name: name},
+	}
+}
+
+func NewFaceSegment(id ID) MessageSegment {
+	return MessageSegment{
+		Type: SegmentTypeFace,
+		Data: MessageSegmentData{ID: id},
 	}
 }
 

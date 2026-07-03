@@ -29,6 +29,10 @@ func fileOutbound(groupID string, imageURLs []string) *pendingOutbound {
 	return &pendingOutbound{GroupID: groupID, ImageURLs: imageURLs, ImageSegmentType: napcat.SegmentTypeFile, ShouldSave: false}
 }
 
+func segmentsOutbound(groupID string, segments []napcat.MessageSegment) *pendingOutbound {
+	return &pendingOutbound{GroupID: groupID, Segments: segments, ShouldSave: false}
+}
+
 func insufficientHistory(groupID string) *pendingOutbound {
 	return simpleOutbound(groupID, "历史消息不足")
 }
