@@ -19,6 +19,7 @@ const (
 	commandReport             commandKey = "report"
 	commandFace               commandKey = "face"
 	commandFaceID             commandKey = "face_id"
+	commandGetFaceID          commandKey = "get_face_id"
 	commandJSON               commandKey = "json"
 	commandFile               commandKey = "file"
 	commandDice               commandKey = "dice"
@@ -53,6 +54,7 @@ var helpText = `.概括 .总结 .俳句 .无只因 .最 .vs .ccb .xmas
 .报告 后面需要接数字，表示报告查询的天数
 .face 后面接数字，表示读取本群最近消息里的系统表情并贴到这条指令上
 .faceid 后面接数字或数字范围，表示发送对应id的系统表情，如.faceid 12或.faceid 12-15
+.getfaceid 后面接数字，表示读取本群最近消息里的系统表情id和收到过的表情回应id
 .json 后面接数字，表示返回本群最近已保存消息的raw_json
 .file 后面接数字，表示把本群最近消息里的图片/动图作为文件发出
 .2d6 掷2次6面骰子，支持写成 .2 d 6
@@ -212,6 +214,10 @@ ccb句式形如“豌豆笑传之踩踩背”。
 		{
 			Key:     commandFaceID,
 			Pattern: `^ *\.faceid *(\d+)(?:-(\d+))? *$`,
+		},
+		{
+			Key:     commandGetFaceID,
+			Pattern: `^ *\.getfaceid *(\d+) *$`,
 		},
 		{
 			Key:     commandJSON,

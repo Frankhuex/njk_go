@@ -15,6 +15,12 @@ type Store struct {
 	db *gorm.DB
 }
 
+type GetFaceIDMessageRow struct {
+	MessageID        string
+	SegmentFaceIDs   []string
+	EmojiLikeFaceIDs []string
+}
+
 func NewStore(db *gorm.DB) *Store {
 	return &Store{db: db}
 }
@@ -187,6 +193,76 @@ func (s *Store) RecentMessageImages(ctx context.Context, groupID string, limit i
 		return nil, err
 	}
 	return rows, nil
+}
+
+func (s *Store) RecentFaceIDRows(ctx context.Context, groupID string, limit int) ([]GetFaceIDMessageRow, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
+
+	type recentMessageRow struct {
+		MessageID string `gorm:"column:message_id"`
+		RawJSON   string `gorm:"column:raw_json"`
+	}
+	var recentMessages []recentMessageRow
+	if err := s.db.WithContext(ctx).Raw(`
+		SELECT m.message_id, COALESCE(m.raw_json::text, '') AS raw_json
+		FROM message AS m
+		WHERE m.group_id = ?
+		ORDER BY m."time" DESC
+		LIMIT ?
+	`, groupID, limit).Scan(&recentMessages).Error; err != nil {
+		return nil, err
+	}
+	if len(recentMessages) == 0 {
+		return nil, nil
+	}
+
+	result := make([]GetFaceIDMessageRow, 0, len(recentMessages))
+	rowByMessageID := make(map[string]*GetFaceIDMessageRow, len(recentMessages))
+	for _, recent := range recentMessages {
+		row := GetFaceIDMessageRow{MessageID: recent.MessageID}
+		if faceIDs, err := extractFaceIDsFromRawJSON(recent.RawJSON); err == nil {
+			row.SegmentFaceIDs = faceIDs
+			sortFaceIDs(row.SegmentFaceIDs)
+		}
+		result = append(result, row)
+		rowByMessageID[recent.MessageID] = &result[len(result)-1]
+	}
+
+	type emojiLikeFaceIDRow struct {
+		MessageID string `gorm:"column:message_id"`
+		FaceID    string `gorm:"column:face_id"`
+	}
+	var likeRows []emojiLikeFaceIDRow
+	if err := s.db.WithContext(ctx).Raw(`
+		SELECT recent.message_id, el.face_id
+		FROM emoji_like AS el
+		INNER JOIN (
+			SELECT m.message_id, m."time"
+			FROM message AS m
+			WHERE m.group_id = ?
+			ORDER BY m."time" DESC
+			LIMIT ?
+		) AS recent ON recent.message_id = el.message_id
+		ORDER BY
+			recent."time" DESC,
+			CASE WHEN el.face_id ~ '^\d+$' THEN el.face_id::bigint END ASC NULLS LAST,
+			el.face_id ASC
+	`, groupID, limit).Scan(&likeRows).Error; err != nil {
+		return nil, err
+	}
+	for _, likeRow := range likeRows {
+		row := rowByMessageID[likeRow.MessageID]
+		if row == nil {
+			continue
+		}
+		row.EmojiLikeFaceIDs = append(row.EmojiLikeFaceIDs, likeRow.FaceID)
+	}
+	for i := range result {
+		sortFaceIDs(result[i].EmojiLikeFaceIDs)
+	}
+	return result, nil
 }
 
 func (s *Store) MessagesSince(ctx context.Context, groupID string, start time.Time) ([]StoredMessage, error) {

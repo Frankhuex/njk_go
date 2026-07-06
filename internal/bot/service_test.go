@@ -139,6 +139,38 @@ func TestMatchCommandRejectsInvalidFaceID(t *testing.T) {
 	}
 }
 
+func TestMatchCommandSupportsGetFaceIDWithOptionalSpace(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	for _, input := range []string{".getfaceid12", ".getfaceid 12"} {
+		match := service.matchCommand(input)
+		if match == nil || match.Command.Key != commandGetFaceID {
+			t.Fatalf("expected %q to match getfaceid command, got=%v", input, match)
+		}
+		if len(match.Groups) < 2 || match.Groups[1] != "12" {
+			t.Fatalf("unexpected getfaceid match groups for %q: %#v", input, match.Groups)
+		}
+	}
+}
+
+func TestMatchCommandRejectsInvalidGetFaceID(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	for _, input := range []string{".getfaceid abc", ".getfaceid"} {
+		if match := service.matchCommand(input); match != nil {
+			t.Fatalf("expected invalid getfaceid command %q not to match, got=%v", input, match)
+		}
+	}
+}
+
 func TestMatchCommandSupportsJSONWithOptionalSpace(t *testing.T) {
 	service := NewService(config.Config{
 		BotUserID:       "1558109748",
@@ -402,6 +434,46 @@ func TestEmojiLikeFaceIDsUsesLikes(t *testing.T) {
 	})
 	if len(faceIDs) != 2 || faceIDs[0] != "66" || faceIDs[1] != "77" {
 		t.Fatalf("unexpected emoji like face ids: %#v", faceIDs)
+	}
+}
+
+func TestSortFaceIDsNumericOrder(t *testing.T) {
+	faceIDs := []string{"10", "2", "1", "abc", "20"}
+	sortFaceIDs(faceIDs)
+	want := []string{"1", "2", "10", "20", "abc"}
+	if strings.Join(faceIDs, ",") != strings.Join(want, ",") {
+		t.Fatalf("unexpected sorted face ids: %#v", faceIDs)
+	}
+}
+
+func TestFormatGetFaceIDRowsGroupsByMessageAndSource(t *testing.T) {
+	rows := []GetFaceIDMessageRow{
+		{
+			MessageID:        "1003",
+			SegmentFaceIDs:   []string{"1", "2", "10"},
+			EmojiLikeFaceIDs: []string{"5", "66"},
+		},
+		{
+			MessageID:        "1002",
+			SegmentFaceIDs:   []string{"14"},
+			EmojiLikeFaceIDs: nil,
+		},
+		{
+			MessageID:        "1001",
+			SegmentFaceIDs:   nil,
+			EmojiLikeFaceIDs: []string{"77", "77"},
+		},
+	}
+
+	got := formatGetFaceIDRows(rows)
+	want := strings.Join([]string{
+		"消息1003 segment：1，2，10",
+		"消息1003 like：5，66",
+		"消息1002 segment：14",
+		"消息1001 like：77，77",
+	}, "\n")
+	if got != want {
+		t.Fatalf("unexpected formatted rows:\n%s", got)
 	}
 }
 

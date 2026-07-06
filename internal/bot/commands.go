@@ -68,6 +68,10 @@ func (s *Service) buildCommandHandler(key commandKey) commandHandler {
 		return func(ctx context.Context, event *napcat.GroupMessageEvent, match matchedCommand) (*pendingOutbound, error) {
 			return s.handleFaceIDCommand(ctx, event.GroupID.String(), event.MessageID.String(), match)
 		}
+	case commandGetFaceID:
+		return func(ctx context.Context, event *napcat.GroupMessageEvent, match matchedCommand) (*pendingOutbound, error) {
+			return s.handleGetFaceIDCommand(ctx, event.GroupID.String(), match)
+		}
 	case commandJSON:
 		return func(ctx context.Context, event *napcat.GroupMessageEvent, match matchedCommand) (*pendingOutbound, error) {
 			return s.handleJSONCommand(ctx, event.GroupID.String(), match)

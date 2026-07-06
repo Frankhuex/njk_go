@@ -30,8 +30,8 @@
 
 1. `internal/napcat/types.go` 已有 `SegmentTypeFace = "face"`，`MessageSegmentData.ID` 可承载 face id。
 2. `NoticeEvent` 已有 `EventNoticeTypeGroupMsgEmojiLike = "group_msg_emoji_like"`、`MessageID`、`UserID`、`OperatorID`、`Likes []EmojiLike`。
-3. `EmojiLike` 当前字段是 `EmojiId string`，JSON tag 为 `emoji_id`。
-4. `NoticeEvent` 当前没有顶层 `EmojiID string` 字段。如果 NapCat 实际上报是顶层 `emoji_id`，需要补字段。
+3. `EmojiLike` 当前字段是 `EmojiID string`，JSON tag 为 `emoji_id`。
+4. `NoticeEvent` 不应新增顶层 `EmojiID` 字段；`group_msg_emoji_like` 必须通过遍历 `NoticeEvent.Likes` 读取 `emoji_id`。
 5. 当前 `HandleNotice` 先判断 `TargetID == SelfID` 才响应，这个逻辑更像 poke/notify 场景。`group_msg_emoji_like` 应该在这个判断之前单独处理，否则可能被直接 return。
 6. 当前群消息不是全部都会入库：`HandleGroupMessage` 只有在未命中命令或命中 `commandNJK` 时才调用 `saveIncomingMessageAndCheckImages`。如果只把 face upsert 放进该函数，显式命令消息里的 face segment 会漏掉。
 7. 现有 `.sh` 脚本只有 `create_njk_tables.sh`、`run_ws_server.sh`、`build_linux.sh`、`docker-compose.sh`，没有 gorm/gen 生成脚本。
@@ -261,16 +261,7 @@ textParts = append(textParts, fmt.Sprintf("[CQ:face,id=%s]", id))
 
 ### notice 表情回应处理
 
-在 `internal/napcat/types.go` 补充字段：
-
-```go
-type NoticeEvent struct {
-    // ... existing fields
-    EmojiID string `json:"emoji_id,omitempty"`
-}
-```
-
-保留现有 `Likes []EmojiLike`，因为当前代码已经为该结构预留了字段。
+`internal/napcat/types.go` 已有 `Likes []EmojiLike`，不要给 `NoticeEvent` 新增顶层 `EmojiID` 字段。`group_msg_emoji_like` 只能遍历 `event.Likes` 读取 `EmojiLike.EmojiID`。
 
 在 `HandleNotice` 开头单独分支：
 
@@ -293,7 +284,7 @@ func (s *Service) handleGroupMsgEmojiLikeNotice(ctx context.Context, event *napc
 
 1. `message_id`：使用 `event.MessageID.String()`。
 2. `user_id`：优先使用 `event.UserID.String()`，为空时 fallback 到 `event.OperatorID.String()`。
-3. `face_id`：优先使用顶层 `event.EmojiID`；如果为空，从 `event.Likes` 中取 `EmojiId`。
+3. `face_id`：遍历 `event.Likes`，从每个 `EmojiLike.EmojiID` 读取。
 
 如果 `Likes` 里有多个 emoji id，建议同一个 notice 内去重后逐个插入：
 
@@ -331,7 +322,7 @@ func (s *Service) HandleNotice(ctx context.Context, conn outboundWriter, clientA
 建议补以下测试：
 
 1. `faceIDsFromSegments`：提取 face id、跳过空 id、同消息去重。
-2. `ParseInboundMessage`：解析 `notice_type = "group_msg_emoji_like"`，覆盖顶层 `emoji_id` 和 `likes[].emoji_id` 两种形态。
+2. `ParseInboundMessage`：解析 `notice_type = "group_msg_emoji_like"`，覆盖 `likes[].emoji_id`。
 3. `HandleNotice`：表情回应 notice 不触发现有 `灰色中分已然绽放` 回复逻辑。
 4. `Store.UpsertFace`：重复 upsert 不报错。
 5. `Store.SaveEmojiLike`：先 upsert face，再插入 emoji_like。
@@ -364,6 +355,259 @@ sh run_ws_server.sh
 4. 执行 `sh generate_gorm.sh`，确认生成 `Face`、`EmojiLike` 及 query。
 5. 在 `Store` 增加 `UpsertFace` 和 `SaveEmojiLike`。
 6. 在 `HandleGroupMessage` 白名单/黑名单过滤后保存 face segment 字典。
-7. 在 `NoticeEvent` 增加顶层 `EmojiID`，并在 `HandleNotice` 早分支处理 `group_msg_emoji_like`。
+7. 保持 `NoticeEvent` 只使用 `Likes []EmojiLike`，并在 `HandleNotice` 早分支处理 `group_msg_emoji_like`。
 8. 补测试并执行 `go test ./...`。
 9. 执行 `sh run_ws_server.sh` 做启动验证。
+
+## `.getfaceid` 指令方案
+
+### 需求语义
+
+新增指令：
+
+```text
+.getfaceid n
+```
+
+`n` 是整数，表示本群最近 `n` 条已保存消息。`.getfaceid` 和 `n` 之间可以有 0 个或任意多个空格，例如 `.getfaceid10` 和 `.getfaceid 10` 都应匹配。
+
+执行流程：
+
+1. 取本群前 `n` 条已保存消息。
+2. 对每条消息，按之前 `.face` 已定义的方式解析 `message.raw_json`，取出消息 segments 中 `type = "face"` 的 `data.id`。
+3. 对同一批消息，用 `message_id` 查询对应 `emoji_like` 记录，可以使用 `INNER JOIN`。
+4. 最终输出按 message 分组，一条消息最多输出两行：segments 中的 face id 单独一行，`emoji_like.face_id` 单独一行。
+5. 每一行内部的 face id 都递增排序，并用中文全角逗号 `，` 连接。
+6. 同一条消息如果 segments 和 `emoji_like` 都没有 face id，则输出 0 行。
+7. 作为普通文本消息发出。
+
+输出建议带上来源前缀，避免两类 id 混在一起无法分辨，例如：
+
+```text
+消息123 segment：1，2，10
+消息123 like：66，77
+消息124 like：5
+```
+
+如果不希望带前缀，也至少要保持“segment 一行、emoji_like 一行”的固定顺序。但推荐带 `message_id` 和来源标签，方便用户知道每行对应哪条消息。
+
+### 命令注册
+
+在 `internal/bot/prompts.go` 新增 command key：
+
+```go
+commandGetFaceID commandKey = "get_face_id"
+```
+
+在 `commandDefs` 中新增正则：
+
+```go
+{
+    Key:     commandGetFaceID,
+    Pattern: `^ *\.getfaceid *(\d+) *$`,
+}
+```
+
+这个正则与现有 `.face` / `.faceid` 不冲突。`matchCommand` 会从后往前匹配，但 `.getfaceid` 前缀独立，不依赖顺序兜底。
+
+建议更新 `helpText`，增加一行：
+
+```text
+.getfaceid 后面接数字，表示读取本群最近消息收到过的表情回应id
+```
+
+### Handler 接入
+
+在 `internal/bot/commands.go` 的 `buildCommandHandler` 增加分支：
+
+```go
+case commandGetFaceID:
+    return func(ctx context.Context, event *napcat.GroupMessageEvent, match matchedCommand) (*pendingOutbound, error) {
+        return s.handleGetFaceIDCommand(ctx, event.GroupID.String(), match)
+    }
+```
+
+新增文件建议：
+
+```text
+internal/bot/command_getfaceid.go
+```
+
+handler 逻辑：
+
+```go
+func (s *Service) handleGetFaceIDCommand(ctx context.Context, groupID string, match matchedCommand) (*pendingOutbound, error) {
+    // 1. 校验捕获组
+    // 2. strconv.Atoi(match.Groups[1])
+    // 3. n <= 0 返回 simpleOutbound(groupID, "参数错误")
+    // 4. 调用 s.store.RecentFaceIDRows(ctx, groupID, n)
+    // 5. 没有结果时建议返回 simpleOutbound(groupID, "没有查到")，避免发送空消息
+    // 6. formatGetFaceIDRows(rows) 后 simpleOutbound(groupID, text)
+}
+```
+
+该命令是显式命令，按当前 `HandleGroupMessage` 逻辑不会保存触发命令本身，因此“前 `n` 条消息”自然不包含当前 `.getfaceid` 指令消息。
+
+### Store 查询设计
+
+在 `internal/bot/store.go` 新增：
+
+```go
+func (s *Store) RecentFaceIDRows(ctx context.Context, groupID string, limit int) ([]GetFaceIDMessageRow, error)
+```
+
+建议定义内部结构：
+
+```go
+type GetFaceIDMessageRow struct {
+    MessageID       string
+    SegmentFaceIDs  []string
+    EmojiLikeFaceIDs []string
+}
+```
+
+查询建议分两步，避免把 `raw_json` 解析和 `emoji_like` 聚合揉成一条复杂 SQL：
+
+1. 先取最近 `n` 条消息，拿到 `message_id`、`time`、`raw_json`。
+2. 再用这些 `message_id` 查 `emoji_like`，按 `message_id` 分组聚合。
+
+最近消息查询可以复用 `RecentMessages`，但它会 reverse 成时间正序；这里建议新方法自己查，保留最近消息的稳定顺序：
+
+```sql
+SELECT m.message_id,
+       m."time",
+       COALESCE(m.raw_json::text, '') AS raw_json
+FROM message AS m
+WHERE m.group_id = ?
+ORDER BY m."time" DESC
+LIMIT ?;
+```
+
+`emoji_like` 查询推荐 SQL 形态：
+
+```sql
+SELECT recent.message_id,
+       el.face_id
+FROM emoji_like AS el
+INNER JOIN (
+    SELECT m.message_id, m."time"
+    FROM message AS m
+    WHERE m.group_id = ?
+    ORDER BY m."time" DESC
+    LIMIT ?
+) AS recent ON recent.message_id = el.message_id
+ORDER BY
+    recent."time" DESC,
+    CASE WHEN el.face_id ~ '^\d+$' THEN el.face_id::bigint END ASC NULLS LAST,
+    el.face_id ASC;
+```
+
+说明：
+
+1. 子查询先限定“本群最近 `n` 条消息”，避免全表 join 后再 limit 导致语义错误。
+2. `INNER JOIN` 符合需求，只返回存在 `emoji_like` 的消息；没有 like 的消息仍会从第一步最近消息查询中保留，用于输出 segment face id。
+3. `face_id` 是 `VARCHAR(30)`，但当前 face id 语义是数字。用正则保护后转 `bigint`，可实现数字递增排序，避免字符串排序出现 `10` 排在 `2` 前面。
+4. `emoji_like` 查询不使用 `DISTINCT`，因为需求说“所有 `emoji_like` 的 `face_id` 取出”。如果同一个 face_id 出现多次，应保留重复值。
+5. segments 中的 face id 来自一条消息内部，建议本地排序。是否去重沿用 `faceIDsFromSegments` 当前语义；如果要严格保留同一条消息里重复 face segment，应新增一个不去重的 extractor。
+
+GORM 写法可以使用 `Raw`，更直观：
+
+```go
+type emojiLikeFaceIDRow struct {
+    MessageID string `gorm:"column:message_id"`
+    FaceID    string `gorm:"column:face_id"`
+}
+
+var rows []emojiLikeFaceIDRow
+err := s.db.WithContext(ctx).Raw(`
+    SELECT recent.message_id, el.face_id
+    FROM emoji_like AS el
+    INNER JOIN (
+        SELECT m.message_id, m."time"
+        FROM message AS m
+        WHERE m.group_id = ?
+        ORDER BY m."time" DESC
+        LIMIT ?
+    ) AS recent ON recent.message_id = el.message_id
+    ORDER BY
+        recent."time" DESC,
+        CASE WHEN el.face_id ~ '^\d+$' THEN el.face_id::bigint END ASC NULLS LAST,
+        el.face_id ASC
+`, groupID, limit).Scan(&rows).Error
+```
+
+segments 中的 face id 处理：
+
+```go
+segmentFaceIDs, err := extractFaceIDsFromRawJSON(rawJSON)
+if err != nil {
+    segmentFaceIDs = nil
+}
+sortFaceIDs(segmentFaceIDs)
+```
+
+建议抽出数字友好的排序函数，两类来源共用：
+
+```go
+func sortFaceIDs(faceIDs []string)
+```
+
+排序规则与 SQL 一致：能解析成整数的按整数递增，无法解析成整数的排在数字后面并按字符串递增。
+
+### 输出格式设计
+
+建议新增格式化 helper：
+
+```go
+func formatGetFaceIDRows(rows []GetFaceIDMessageRow) string
+```
+
+格式化规则：
+
+1. 遍历最近消息顺序。
+2. 如果 `SegmentFaceIDs` 非空，输出一行：`消息<message_id> segment：<ids>`。
+3. 如果 `EmojiLikeFaceIDs` 非空，输出一行：`消息<message_id> like：<ids>`。
+4. `<ids>` 使用 `strings.Join(ids, "，")`。
+5. 全部为空时返回空字符串，由 handler 转成 `没有查到`。
+
+示例：
+
+```text
+消息1003 segment：1，2，10
+消息1003 like：5，66
+消息1002 segment：14
+消息1001 like：77，77
+```
+
+这里 `消息1001 like：77，77` 表示 `emoji_like` 表里有两条记录，按“不去重”语义保留。
+
+### 测试建议
+
+建议补以下测试：
+
+1. `TestMatchCommandSupportsGetFaceIDWithOptionalSpace`：`.getfaceid12` 和 `.getfaceid 12` 都匹配 `commandGetFaceID`。
+2. `TestMatchCommandRejectsInvalidGetFaceID`：`.getfaceid abc`、`.getfaceid` 不匹配。
+3. `TestHandleGetFaceIDCommandRejectsNonPositiveLimit`：`.getfaceid 0` 返回 `参数错误`。
+4. `TestFormatGetFaceIDRowsGroupsByMessageAndSource`：同一消息同时有 segment 和 like 时输出两行，且 segment 行在 like 行前。
+5. `TestSortFaceIDsNumericOrder`：`[]string{"10", "2", "1"}` 排成 `[]string{"1", "2", "10"}`。
+6. 如果引入 DB 测试，覆盖 `RecentFaceIDRows`：构造多条不同时间消息、raw_json face segment 与 emoji_like，确认只取最近 `n` 条消息内的记录，按 message 分组，行内数字递增排序，`emoji_like` 重复 face_id 不去重。
+
+当前 `Service` 直接持有 `*Store`，handler 单测如果不接真实 DB 会不方便 mock。最小改法是先覆盖命令匹配和纯格式化 helper，例如抽出：
+
+```go
+func formatGetFaceIDRows(rows []GetFaceIDMessageRow) string {
+    // join per-message, per-source lines with "\n"
+}
+```
+
+Store 层行为可先通过 SQL 评审和人工联调验证，后续再补 PostgreSQL 集成测试。
+
+### 验证命令
+
+实现后建议执行：
+
+```bash
+go test ./internal/bot ./internal/napcat ./internal/model ./internal/query
+```
+
+如果现有 `.faceid` 测试仍未修复，`go test ./...` 可能继续失败；需要区分本次 `.getfaceid` 改动与已有失败。
