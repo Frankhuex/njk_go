@@ -378,6 +378,33 @@ func TestExtractFaceIDsFromRawJSON(t *testing.T) {
 	}
 }
 
+func TestFaceIDsFromSegmentsDeduplicatesAndSkipsBlank(t *testing.T) {
+	faceIDs := faceIDsFromSegments([]napcat.MessageSegment{
+		napcat.NewTextSegment("hi"),
+		napcat.NewFaceSegment("123"),
+		napcat.NewFaceSegment("123"),
+		napcat.NewFaceSegment(""),
+		napcat.NewFaceSegment("456"),
+	})
+	if len(faceIDs) != 2 || faceIDs[0] != "123" || faceIDs[1] != "456" {
+		t.Fatalf("unexpected face ids: %#v", faceIDs)
+	}
+}
+
+func TestEmojiLikeFaceIDsUsesLikes(t *testing.T) {
+	faceIDs := emojiLikeFaceIDs(&napcat.NoticeEvent{
+		Likes: []napcat.EmojiLike{
+			{EmojiID: "66"},
+			{EmojiID: "77"},
+			{EmojiID: "66"},
+			{EmojiID: ""},
+		},
+	})
+	if len(faceIDs) != 2 || faceIDs[0] != "66" || faceIDs[1] != "77" {
+		t.Fatalf("unexpected emoji like face ids: %#v", faceIDs)
+	}
+}
+
 func TestHandleFaceIDCommandBuildsSingleFaceSegment(t *testing.T) {
 	service := NewService(config.Config{
 		BotUserID:       "1558109748",

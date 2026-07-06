@@ -20,6 +20,10 @@ func (s *Service) HandleNotice(ctx context.Context, conn outboundWriter, clientA
 	}
 
 	log.Printf("【处理Notice】%s - 群ID: %s target_id=%s self_id=%s", clientAddr, event.GroupID, event.TargetID, event.SelfID)
+	if event.NoticeType == napcat.EventNoticeTypeGroupMsgEmojiLike {
+		s.handleGroupMsgEmojiLikeNotice(ctx, event)
+		return
+	}
 
 	if event.TargetID == "" || event.SelfID == "" || event.TargetID != event.SelfID {
 		return
@@ -53,6 +57,7 @@ func (s *Service) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 		log.Printf("【忽略群消息】%s - 用户:%s 在黑名单", clientAddr, senderID)
 		return
 	}
+	s.saveFacesFromGroupMessage(ctx, event)
 
 	rawMessage := event.RawMessage
 	match := s.matchCommand(rawMessage)

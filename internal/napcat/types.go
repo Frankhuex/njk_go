@@ -185,7 +185,7 @@ type GroupMessageEvent struct {
 }
 
 type EmojiLike struct {
-	EmojiId string `json:"emoji_id,omitempty"`
+	EmojiID string `json:"emoji_id,omitempty"`
 	Count   int64  `json:"count,omitempty"`
 }
 

@@ -64,6 +64,37 @@ func TestParseInboundMessageNotice(t *testing.T) {
 	}
 }
 
+func TestParseInboundMessageGroupMsgEmojiLikeNotice(t *testing.T) {
+	raw := []byte(`{
+		"time":1776271198,
+		"self_id":1558109748,
+		"post_type":"notice",
+		"notice_type":"group_msg_emoji_like",
+		"group_id":789,
+		"message_id":123,
+		"user_id":456,
+		"likes":[{"emoji_id":"66","count":1},{"emoji_id":"77","count":2}]
+	}`)
+
+	parsed, err := ParseInboundMessage(raw)
+	if err != nil {
+		t.Fatalf("ParseInboundMessage returned error: %v", err)
+	}
+
+	if parsed.Kind != EventKindNotice || parsed.Notice == nil {
+		t.Fatalf("unexpected parsed notice: %#v", parsed)
+	}
+	if parsed.Notice.NoticeType != EventNoticeTypeGroupMsgEmojiLike {
+		t.Fatalf("unexpected notice type: %s", parsed.Notice.NoticeType)
+	}
+	if parsed.Notice.MessageID != "123" || parsed.Notice.UserID != "456" {
+		t.Fatalf("unexpected notice fields: %#v", parsed.Notice)
+	}
+	if len(parsed.Notice.Likes) != 2 || parsed.Notice.Likes[0].EmojiID != "66" || parsed.Notice.Likes[1].EmojiID != "77" || parsed.Notice.Likes[1].Count != 2 {
+		t.Fatalf("unexpected likes: %#v", parsed.Notice.Likes)
+	}
+}
+
 func TestParseInboundMessageActionResponse(t *testing.T) {
 	raw := []byte(`{
 		"status":"ok",

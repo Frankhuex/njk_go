@@ -89,6 +89,33 @@ func (s *Store) SaveAtUser(ctx context.Context, messageID string, userID string)
 	}).Error
 }
 
+func (s *Store) UpsertFace(ctx context.Context, faceID string) error {
+	if faceID == "" {
+		return nil
+	}
+	return s.db.WithContext(ctx).Clauses(clause.OnConflict{DoNothing: true}).Create(&model.Face{
+		FaceID: faceID,
+	}).Error
+}
+
+func (s *Store) SaveEmojiLike(ctx context.Context, messageID string, userID string, faceID string) error {
+	if messageID == "" || userID == "" || faceID == "" {
+		return nil
+	}
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.Face{
+			FaceID: faceID,
+		}).Error; err != nil {
+			return err
+		}
+		return tx.Create(&model.EmojiLike{
+			MessageID: messageID,
+			UserID:    userID,
+			FaceID:    faceID,
+		}).Error
+	})
+}
+
 func (s *Store) SaveImage(ctx context.Context, messageID string, imageHash string, imageURL string) (*model.Image, error) {
 	record := &model.Image{
 		MessageID: messageID,
