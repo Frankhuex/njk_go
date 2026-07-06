@@ -49,10 +49,9 @@ func extractFaceIDsFromRawJSON(rawJSON string) ([]string, error) {
 
 	emojiIDs := make([]string, 0)
 	for _, segment := range segments {
-		if segment.Type != "face" || segment.Data.ID == "" {
-			continue
+		if segment.Type == napcat.SegmentTypeFace && len(segment.Data.ID) > 0 {
+			emojiIDs = append(emojiIDs, segment.Data.ID.String())
 		}
-		emojiIDs = append(emojiIDs, segment.Data.ID.String())
 	}
 	return emojiIDs, nil
 }

@@ -389,7 +389,7 @@ func TestHandleFaceIDCommandBuildsSingleFaceSegment(t *testing.T) {
 	if match == nil {
 		t.Fatal("expected faceid command to match")
 	}
-	outbound, err := service.handleFaceIDCommand(context.Background(), "123", *match)
+	outbound, err := service.handleFaceIDCommand(context.Background(), "123", "4456", *match)
 	if err != nil {
 		t.Fatalf("handle faceid command: %v", err)
 	}
@@ -412,7 +412,7 @@ func TestHandleFaceIDCommandBuildsRangeFaceSegments(t *testing.T) {
 	if match == nil {
 		t.Fatal("expected faceid command to match")
 	}
-	outbound, err := service.handleFaceIDCommand(context.Background(), "123", *match)
+	outbound, err := service.handleFaceIDCommand(context.Background(), "123", "4456", *match)
 	if err != nil {
 		t.Fatalf("handle faceid command: %v", err)
 	}
@@ -438,7 +438,7 @@ func TestHandleFaceIDCommandRejectsInvalidRange(t *testing.T) {
 		if match == nil {
 			t.Fatalf("expected %q to match before handler validation", input)
 		}
-		outbound, err := service.handleFaceIDCommand(context.Background(), "123", *match)
+		outbound, err := service.handleFaceIDCommand(context.Background(), "123", "4456", *match)
 		if err != nil {
 			t.Fatalf("handle faceid command: %v", err)
 		}
@@ -459,7 +459,7 @@ func TestHandleFaceIDCommandRejectsLargeRange(t *testing.T) {
 	if match == nil {
 		t.Fatal("expected faceid command to match")
 	}
-	outbound, err := service.handleFaceIDCommand(context.Background(), "123", *match)
+	outbound, err := service.handleFaceIDCommand(context.Background(), "123", "4456", *match)
 	if err != nil {
 		t.Fatalf("handle faceid command: %v", err)
 	}

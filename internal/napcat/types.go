@@ -45,24 +45,44 @@ func (id ID) Int64() (int64, error) {
 	return strconv.ParseInt(string(id), 10, 64)
 }
 
+type EventPostType string
+
+const (
+	EventPostTypeMessage = "message"
+	EventPostTypeNotice  = "notice"
+)
+
+type EventMessageType string
+
+const (
+	EventMessageTypeGroup = "group"
+)
+
+type EventNoticeType string
+
+const (
+	EventNoticeTypeNotify            = "notify"
+	EventNoticeTypeGroupMsgEmojiLike = "group_msg_emoji_like"
+)
+
 // InboundEnvelope 对应 NapCat 反向 WS 上报与 action 回执的公共外层字段。
 type InboundEnvelope struct {
-	PostType      string          `json:"post_type,omitempty"`
-	MetaEventType string          `json:"meta_event_type,omitempty"`
-	MessageType   string          `json:"message_type,omitempty"`
-	NoticeType    string          `json:"notice_type,omitempty"`
-	SubType       string          `json:"sub_type,omitempty"`
-	Status        json.RawMessage `json:"status,omitempty"`
-	Retcode       int             `json:"retcode,omitempty"`
-	Echo          json.RawMessage `json:"echo,omitempty"`
+	PostType      EventPostType    `json:"post_type,omitempty"`
+	MetaEventType string           `json:"meta_event_type,omitempty"`
+	MessageType   EventMessageType `json:"message_type,omitempty"`
+	NoticeType    string           `json:"notice_type,omitempty"`
+	SubType       string           `json:"sub_type,omitempty"`
+	Status        json.RawMessage  `json:"status,omitempty"`
+	Retcode       int              `json:"retcode,omitempty"`
+	Echo          json.RawMessage  `json:"echo,omitempty"`
 }
 
 func (e InboundEnvelope) IsGroupMessage() bool {
-	return e.PostType == "message" && e.MessageType == "group"
+	return e.PostType == EventPostTypeMessage && e.MessageType == EventMessageTypeGroup
 }
 
 func (e InboundEnvelope) IsNotice() bool {
-	return e.PostType == "notice"
+	return e.PostType == EventPostTypeNotice
 }
 
 func (e InboundEnvelope) IsActionResponse() bool {
@@ -133,54 +153,60 @@ type SendMsgResponse = ActionResponse[*SendMsgResponseData]
 
 // GetMsgData 对应 NapCat get_msg 返回体中的 data 结构。
 type GetMsgData struct {
-	Time           int64          `json:"time"`
-	MessageType    string         `json:"message_type"`
-	MessageID      ID             `json:"message_id"`
-	RealID         ID             `json:"real_id"`
-	MessageSeq     int64          `json:"message_seq"`
-	Sender         Sender         `json:"sender"`
-	Message        MessagePayload `json:"message"`
-	RawMessage     string         `json:"raw_message"`
-	Font           int64          `json:"font"`
-	GroupID        ID             `json:"group_id,omitempty"`
-	UserID         ID             `json:"user_id"`
-	EmojiLikesList []string       `json:"emoji_likes_list,omitempty"`
+	Time           int64            `json:"time"`
+	MessageType    EventMessageType `json:"message_type"`
+	MessageID      ID               `json:"message_id"`
+	RealID         ID               `json:"real_id"`
+	MessageSeq     int64            `json:"message_seq"`
+	Sender         Sender           `json:"sender"`
+	Message        MessagePayload   `json:"message"`
+	RawMessage     string           `json:"raw_message"`
+	Font           int64            `json:"font"`
+	GroupID        ID               `json:"group_id,omitempty"`
+	UserID         ID               `json:"user_id"`
+	EmojiLikesList []string         `json:"emoji_likes_list,omitempty"`
 }
 
 // GroupMessageEvent 对应 NapCat 反向 WS 上报的群消息事件。
 type GroupMessageEvent struct {
-	Time        int64          `json:"time"`
-	SelfID      ID             `json:"self_id"`
-	PostType    string         `json:"post_type"`
-	MessageType string         `json:"message_type"`
-	SubType     string         `json:"sub_type,omitempty"`
-	MessageID   ID             `json:"message_id"`
-	UserID      ID             `json:"user_id"`
-	GroupID     ID             `json:"group_id"`
-	GroupName   string         `json:"group_name,omitempty"`
-	RawMessage  string         `json:"raw_message"`
-	Font        int64          `json:"font,omitempty"`
-	Sender      Sender         `json:"sender"`
-	Message     MessagePayload `json:"message"`
+	Time        int64            `json:"time"`
+	SelfID      ID               `json:"self_id"`
+	PostType    EventPostType    `json:"post_type"`
+	MessageType EventMessageType `json:"message_type"`
+	SubType     string           `json:"sub_type,omitempty"`
+	MessageID   ID               `json:"message_id"`
+	UserID      ID               `json:"user_id"`
+	GroupID     ID               `json:"group_id"`
+	GroupName   string           `json:"group_name,omitempty"`
+	RawMessage  string           `json:"raw_message"`
+	Font        int64            `json:"font,omitempty"`
+	Sender      Sender           `json:"sender"`
+	Message     MessagePayload   `json:"message"`
+}
+
+type EmojiLike struct {
+	EmojiId string `json:"emoji_id,omitempty"`
+	Count   int64  `json:"count,omitempty"`
 }
 
 // NoticeEvent 对应 NapCat 反向 WS 上报的 notice 事件。
 type NoticeEvent struct {
-	Time        int64  `json:"time"`
-	SelfID      ID     `json:"self_id"`
-	PostType    string `json:"post_type"`
-	NoticeType  string `json:"notice_type,omitempty"`
-	SubType     string `json:"sub_type,omitempty"`
-	UserID      ID     `json:"user_id,omitempty"`
-	GroupID     ID     `json:"group_id,omitempty"`
-	OperatorID  ID     `json:"operator_id,omitempty"`
-	TargetID    ID     `json:"target_id,omitempty"`
-	MessageID   ID     `json:"message_id,omitempty"`
-	RawInfo     any    `json:"raw_info,omitempty"`
-	GroupName   string `json:"group_name,omitempty"`
-	Nickname    string `json:"nickname,omitempty"`
-	TargetUin   ID     `json:"target_uin,omitempty"`
-	OperatorUin ID     `json:"operator_uin,omitempty"`
+	Time        int64           `json:"time"`
+	SelfID      ID              `json:"self_id"`
+	PostType    EventPostType   `json:"post_type"`
+	NoticeType  EventNoticeType `json:"notice_type,omitempty"`
+	SubType     string          `json:"sub_type,omitempty"`
+	UserID      ID              `json:"user_id,omitempty"`
+	GroupID     ID              `json:"group_id,omitempty"`
+	OperatorID  ID              `json:"operator_id,omitempty"`
+	TargetID    ID              `json:"target_id,omitempty"`
+	MessageID   ID              `json:"message_id,omitempty"`
+	RawInfo     any             `json:"raw_info,omitempty"`
+	GroupName   string          `json:"group_name,omitempty"`
+	Nickname    string          `json:"nickname,omitempty"`
+	TargetUin   ID              `json:"target_uin,omitempty"`
+	OperatorUin ID              `json:"operator_uin,omitempty"`
+	Likes       []EmojiLike     `json:"likes"`
 }
 
 // Sender 对应 NapCat 消息事件或 get_msg 返回中的 sender 结构。
@@ -271,6 +297,7 @@ const (
 	SegmentTypeText  SegmentType = "text"
 	SegmentTypeAt    SegmentType = "at"
 	SegmentTypeFace  SegmentType = "face"
+	SegmentTypePoke  SegmentType = "poke"
 	SegmentTypeImage SegmentType = "image"
 	SegmentTypeReply SegmentType = "reply"
 	SegmentTypeFile  SegmentType = "file"
@@ -305,6 +332,7 @@ type MessageSegmentData struct {
 	Title          string          `json:"title,omitempty"`
 	Content        *MessagePayload `json:"content,omitempty"`
 	Data           json.RawMessage `json:"data,omitempty"`
+	Type           string          `json:"type,omitempty"`
 }
 
 func NewTextSegment(text string) MessageSegment {

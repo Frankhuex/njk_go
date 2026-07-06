@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS message (
     group_id VARCHAR(30) NULL REFERENCES "group"(group_id) ON DELETE SET NULL,
     card VARCHAR(100) NULL,
     text TEXT NULL,
-    reply_id VARCHAR(30) NULL REFERENCES message(message_id) ON DELETE SET NULL,
+    reply_id VARCHAR(30) NULL,
     raw_json JSONB NULL,
     raw_message TEXT NULL
 );

@@ -8,9 +8,12 @@ import (
 	"njk_go/internal/napcat"
 )
 
-const maxFaceIDSegments = 100
+const (
+	maxFaceIDSegments = 50
+	maxFaceStickers   = 10
+)
 
-func (s *Service) handleFaceIDCommand(ctx context.Context, groupID string, match matchedCommand) (*pendingOutbound, error) {
+func (s *Service) handleFaceIDCommand(ctx context.Context, groupID string, messageID string, match matchedCommand) (*pendingOutbound, error) {
 	if len(match.Groups) < 2 {
 		return simpleOutbound(groupID, "参数错误"), nil
 	}
@@ -35,8 +38,19 @@ func (s *Service) handleFaceIDCommand(ctx context.Context, groupID string, match
 	}
 
 	segments := make([]napcat.MessageSegment, 0, right-left+1)
+	emojiIDs := make([]string, 0, right-left+1)
 	for id := left; id <= right; id++ {
 		segments = append(segments, napcat.NewFaceSegment(napcat.ID(strconv.Itoa(id))))
+		if id-left+1 <= maxFaceStickers {
+			emojiIDs = append(emojiIDs, strconv.FormatInt(int64(id), 10))
+		}
 	}
-	return segmentsOutbound(groupID, segments), nil
+
+	return &pendingOutbound{
+		GroupID:            groupID,
+		Segments:           segments,
+		EmojiLikeMessageID: messageID,
+		EmojiLikeIDs:       emojiIDs,
+		ShouldSave:         true,
+	}, nil
 }

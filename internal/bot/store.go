@@ -279,7 +279,7 @@ func (m StoredMessage) Format() string {
 	if name == "" {
 		name = "Unknown User"
 	}
-	return fmt.Sprintf("[%s] %s (%s): %s", formatDisplayTime(m.Time), name, m.SenderID, m.Text)
+	return fmt.Sprintf("[%s,消息%s] %s (qq号%s): %s", formatDisplayTime(m.Time), m.MessageID, name, m.SenderID, m.Text)
 }
 
 type StoredImage struct {
