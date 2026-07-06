@@ -85,6 +85,29 @@ CREATE TABLE IF NOT EXISTS img_whitelist (
     image_hash VARCHAR(100) NOT NULL UNIQUE
 );
 
+CREATE TABLE IF NOT EXISTS face (
+    face_id VARCHAR(30) PRIMARY KEY
+);
+
+CREATE TABLE IF NOT EXISTS emoji_like (
+    id SERIAL PRIMARY KEY,
+    message_id VARCHAR(30) NOT NULL,
+    user_id VARCHAR(30) NOT NULL,
+    face_id VARCHAR(30) NOT NULL REFERENCES face(face_id) ON DELETE RESTRICT
+);
+
+CREATE INDEX IF NOT EXISTS idx_emoji_like_message_id
+    ON emoji_like (message_id);
+
+CREATE INDEX IF NOT EXISTS idx_emoji_like_user_id
+    ON emoji_like (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_emoji_like_face_id
+    ON emoji_like (face_id);
+
+CREATE INDEX IF NOT EXISTS idx_emoji_like_message_user
+    ON emoji_like (message_id, user_id);
+
 CREATE TABLE IF NOT EXISTS topic (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -138,3 +161,26 @@ CREATE INDEX IF NOT EXISTS idx_msg_word_word_id
 
 CREATE INDEX IF NOT EXISTS idx_msg_word_message_word
     ON msg_word (message_id, word_id);
+
+CREATE TABLE IF NOT EXISTS face (
+    face_id VARCHAR(30) PRIMARY KEY
+);
+
+CREATE TABLE IF NOT EXISTS emoji_like (
+    id SERIAL PRIMARY KEY,
+    message_id VARCHAR(30) NOT NULL,
+    user_id VARCHAR(30) NOT NULL,
+    face_id VARCHAR(30) NOT NULL REFERENCES face(face_id) ON DELETE RESTRICT
+);
+
+CREATE INDEX IF NOT EXISTS idx_emoji_like_message_id
+    ON emoji_like (message_id);
+
+CREATE INDEX IF NOT EXISTS idx_emoji_like_user_id
+    ON emoji_like (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_emoji_like_face_id
+    ON emoji_like (face_id);
+
+CREATE INDEX IF NOT EXISTS idx_emoji_like_message_user
+    ON emoji_like (message_id, user_id);

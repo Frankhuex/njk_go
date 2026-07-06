@@ -18,6 +18,8 @@ import (
 var (
 	Q            = new(Query)
 	AtUser       *atUser
+	EmojiLike    *emojiLike
+	Face         *face
 	Group        *group
 	Image        *image
 	ImgWhitelist *imgWhitelist
@@ -32,6 +34,8 @@ var (
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	AtUser = &Q.AtUser
+	EmojiLike = &Q.EmojiLike
+	Face = &Q.Face
 	Group = &Q.Group
 	Image = &Q.Image
 	ImgWhitelist = &Q.ImgWhitelist
@@ -47,6 +51,8 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:           db,
 		AtUser:       newAtUser(db, opts...),
+		EmojiLike:    newEmojiLike(db, opts...),
+		Face:         newFace(db, opts...),
 		Group:        newGroup(db, opts...),
 		Image:        newImage(db, opts...),
 		ImgWhitelist: newImgWhitelist(db, opts...),
@@ -63,6 +69,8 @@ type Query struct {
 	db *gorm.DB
 
 	AtUser       atUser
+	EmojiLike    emojiLike
+	Face         face
 	Group        group
 	Image        image
 	ImgWhitelist imgWhitelist
@@ -80,6 +88,8 @@ func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:           db,
 		AtUser:       q.AtUser.clone(db),
+		EmojiLike:    q.EmojiLike.clone(db),
+		Face:         q.Face.clone(db),
 		Group:        q.Group.clone(db),
 		Image:        q.Image.clone(db),
 		ImgWhitelist: q.ImgWhitelist.clone(db),
@@ -104,6 +114,8 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:           db,
 		AtUser:       q.AtUser.replaceDB(db),
+		EmojiLike:    q.EmojiLike.replaceDB(db),
+		Face:         q.Face.replaceDB(db),
 		Group:        q.Group.replaceDB(db),
 		Image:        q.Image.replaceDB(db),
 		ImgWhitelist: q.ImgWhitelist.replaceDB(db),
@@ -118,6 +130,8 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 
 type queryCtx struct {
 	AtUser       IAtUserDo
+	EmojiLike    IEmojiLikeDo
+	Face         IFaceDo
 	Group        IGroupDo
 	Image        IImageDo
 	ImgWhitelist IImgWhitelistDo
@@ -132,6 +146,8 @@ type queryCtx struct {
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
 		AtUser:       q.AtUser.WithContext(ctx),
+		EmojiLike:    q.EmojiLike.WithContext(ctx),
+		Face:         q.Face.WithContext(ctx),
 		Group:        q.Group.WithContext(ctx),
 		Image:        q.Image.WithContext(ctx),
 		ImgWhitelist: q.ImgWhitelist.WithContext(ctx),
