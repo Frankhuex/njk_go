@@ -103,8 +103,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Printf("【收到消息】%s - %s", clientAddr, string(payload))
-
+		log.Printf("【收到原始消息】%s - %s", clientAddr, string(payload))
 		parsed, err := napcat.ParseInboundMessage(payload)
 		if err != nil {
 			log.Printf("【解析失败】%s - %v", clientAddr, err)

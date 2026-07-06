@@ -2,8 +2,10 @@ package bot
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"njk_go/internal/napcat"
@@ -27,6 +29,10 @@ func imageOutbound(groupID string, imageURLs []string) *pendingOutbound {
 
 func fileOutbound(groupID string, imageURLs []string) *pendingOutbound {
 	return &pendingOutbound{GroupID: groupID, ImageURLs: imageURLs, ImageSegmentType: napcat.SegmentTypeFile, ShouldSave: false}
+}
+
+func segmentsOutbound(groupID string, segments []napcat.MessageSegment) *pendingOutbound {
+	return &pendingOutbound{GroupID: groupID, Segments: segments, ShouldSave: false}
 }
 
 func insufficientHistory(groupID string) *pendingOutbound {
@@ -73,4 +79,36 @@ func startOfReport(dayNum int) time.Time {
 	now := time.Now()
 	todayFive := time.Date(now.Year(), now.Month(), now.Day(), 5, 0, 0, 0, now.Location())
 	return todayFive.AddDate(0, 0, -dayNum)
+}
+
+func StructToKeyValue(v interface{}) (string, error) {
+	// 1. 先序列化为 JSON 字节
+	data, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+
+	// 2. 反序列化为 Map，此时键值对已经根据 JSON 标签对应好了
+	var m map[string]interface{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		return "", err
+	}
+
+	// 3. 遍历 Map 拼接字符串
+	var pairs []string
+	typeKey := "type"
+	if typeVal, exists := m[typeKey]; exists {
+		pairs = append(pairs, fmt.Sprintf("%s=%v", typeKey, typeVal))
+	}
+	for k, v := range m {
+		if k == typeKey {
+			continue
+		}
+		// fmt.Sprintf("%v") 可以把基础类型（数字、布尔、字符串）直接转为没有引号的文本
+		// 注意：如果 val 是复杂类型（如切片或嵌套结构体），需要视具体需求特殊处理
+		pairs = append(pairs, fmt.Sprintf("%s=%v", k, v))
+	}
+
+	// 4. 用逗号连接
+	return strings.Join(pairs, ","), nil
 }

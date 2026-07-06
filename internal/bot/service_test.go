@@ -91,6 +91,111 @@ func TestMatchCommandSupportsFaceWithoutSpace(t *testing.T) {
 	}
 }
 
+func TestMatchCommandSupportsFaceIDSingle(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	for _, input := range []string{".faceid12", ".faceid 12"} {
+		match := service.matchCommand(input)
+		if match == nil || match.Command.Key != commandFaceID {
+			t.Fatalf("expected %q to match faceid command, got=%v", input, match)
+		}
+		if len(match.Groups) < 2 || match.Groups[1] != "12" {
+			t.Fatalf("unexpected faceid match groups for %q: %#v", input, match.Groups)
+		}
+	}
+}
+
+func TestMatchCommandSupportsFaceIDRange(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	match := service.matchCommand(".faceid 12-15")
+	if match == nil || match.Command.Key != commandFaceID {
+		t.Fatalf("expected .faceid 12-15 to match faceid command, got=%v", match)
+	}
+	if len(match.Groups) < 3 || match.Groups[1] != "12" || match.Groups[2] != "15" {
+		t.Fatalf("unexpected faceid range match groups: %#v", match.Groups)
+	}
+}
+
+func TestMatchCommandRejectsInvalidFaceID(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	for _, input := range []string{".faceid abc", ".faceid 12-a", ".faceid"} {
+		if match := service.matchCommand(input); match != nil {
+			t.Fatalf("expected invalid faceid command %q not to match, got=%v", input, match)
+		}
+	}
+}
+
+func TestMatchCommandSupportsGetFaceIDWithOptionalSpace(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	for _, input := range []string{".getfaceid12", ".getfaceid 12"} {
+		match := service.matchCommand(input)
+		if match == nil || match.Command.Key != commandGetFaceID {
+			t.Fatalf("expected %q to match getfaceid command, got=%v", input, match)
+		}
+		if len(match.Groups) < 2 || match.Groups[1] != "12" {
+			t.Fatalf("unexpected getfaceid match groups for %q: %#v", input, match.Groups)
+		}
+	}
+}
+
+func TestMatchCommandRejectsInvalidGetFaceID(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	for _, input := range []string{".getfaceid abc", ".getfaceid"} {
+		if match := service.matchCommand(input); match != nil {
+			t.Fatalf("expected invalid getfaceid command %q not to match, got=%v", input, match)
+		}
+	}
+}
+
+func TestMatchCommandSupportsAllFace(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	match := service.matchCommand(".allface")
+	if match == nil || match.Command.Key != commandAllFace {
+		t.Fatalf("expected .allface to match allface command, got=%v", match)
+	}
+}
+
+func TestMatchCommandRejectsAllFaceWithArg(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	if match := service.matchCommand(".allface 1"); match != nil {
+		t.Fatalf("expected .allface with arg not to match, got=%v", match)
+	}
+}
+
 func TestMatchCommandSupportsJSONWithOptionalSpace(t *testing.T) {
 	service := NewService(config.Config{
 		BotUserID:       "1558109748",
@@ -310,15 +415,9 @@ func TestHandleDiceCommandRejectsCountOverTwenty(t *testing.T) {
 func TestExtractFaceIDsFromRawJSON(t *testing.T) {
 	rawJSONBytes, err := json.Marshal([]napcat.MessageSegment{
 		napcat.NewTextSegment("hi"),
-		{
-			Type: "face",
-			Data: napcat.MessageSegmentData{ID: "123"},
-		},
+		napcat.NewFaceSegment("123"),
 		napcat.NewReplySegment("456"),
-		{
-			Type: "face",
-			Data: napcat.MessageSegmentData{ID: "789"},
-		},
+		napcat.NewFaceSegment("789"),
 	})
 	if err != nil {
 		t.Fatalf("marshal raw json: %v", err)
@@ -333,6 +432,205 @@ func TestExtractFaceIDsFromRawJSON(t *testing.T) {
 	}
 	if faceIDs[0] != "123" || faceIDs[1] != "789" {
 		t.Fatalf("unexpected face ids: %#v", faceIDs)
+	}
+}
+
+func TestFaceIDsFromSegmentsDeduplicatesAndSkipsBlank(t *testing.T) {
+	faceIDs := faceIDsFromSegments([]napcat.MessageSegment{
+		napcat.NewTextSegment("hi"),
+		napcat.NewFaceSegment("123"),
+		napcat.NewFaceSegment("123"),
+		napcat.NewFaceSegment(""),
+		napcat.NewFaceSegment("456"),
+	})
+	if len(faceIDs) != 2 || faceIDs[0] != "123" || faceIDs[1] != "456" {
+		t.Fatalf("unexpected face ids: %#v", faceIDs)
+	}
+}
+
+func TestEmojiLikeFaceIDsUsesLikes(t *testing.T) {
+	faceIDs := emojiLikeFaceIDs(&napcat.NoticeEvent{
+		Likes: []napcat.EmojiLike{
+			{EmojiID: "66"},
+			{EmojiID: "77"},
+			{EmojiID: "66"},
+			{EmojiID: ""},
+		},
+	})
+	if len(faceIDs) != 2 || faceIDs[0] != "66" || faceIDs[1] != "77" {
+		t.Fatalf("unexpected emoji like face ids: %#v", faceIDs)
+	}
+}
+
+func TestSortFaceIDsNumericOrder(t *testing.T) {
+	faceIDs := []string{"10", "2", "1", "abc", "20"}
+	sortFaceIDs(faceIDs)
+	want := []string{"1", "2", "10", "20", "abc"}
+	if strings.Join(faceIDs, ",") != strings.Join(want, ",") {
+		t.Fatalf("unexpected sorted face ids: %#v", faceIDs)
+	}
+}
+
+func TestFormatGetFaceIDRowsGroupsBySource(t *testing.T) {
+	rows := []GetFaceIDMessageRow{
+		{
+			MessageID:        "1003",
+			SegmentFaceIDs:   []string{"1", "2", "10"},
+			EmojiLikeFaceIDs: []string{"5", "66"},
+		},
+		{
+			MessageID:        "1002",
+			SegmentFaceIDs:   []string{"14"},
+			EmojiLikeFaceIDs: nil,
+		},
+		{
+			MessageID:        "1001",
+			SegmentFaceIDs:   nil,
+			EmojiLikeFaceIDs: []string{"77", "77"},
+		},
+	}
+
+	got := formatGetFaceIDRows(rows)
+	want := strings.Join([]string{
+		"发：1，2，10",
+		"贴：5，66",
+		"发：14",
+		"贴：77，77",
+	}, "\n")
+	if got != want {
+		t.Fatalf("unexpected formatted rows:\n%s", got)
+	}
+}
+
+func TestFormatAllFaceIDsUsesFullWidthPunctuation(t *testing.T) {
+	got := formatAllFaceIDs([]string{"1", "2", "10"}, []string{"2", "10"})
+	want := "全部：1，2，10\n贴过的：2，10"
+	if got != want {
+		t.Fatalf("unexpected allface output: %q", got)
+	}
+}
+
+func TestHandleFaceIDCommandBuildsSingleFaceSegment(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	match := service.matchCommand(".faceid 12")
+	if match == nil {
+		t.Fatal("expected faceid command to match")
+	}
+	outbound, err := service.handleFaceIDCommand(context.Background(), "123", "4456", *match)
+	if err != nil {
+		t.Fatalf("handle faceid command: %v", err)
+	}
+	if outbound == nil || outbound.ShouldSave || len(outbound.Segments) != 1 {
+		t.Fatalf("unexpected outbound: %#v", outbound)
+	}
+	if outbound.Segments[0].Type != napcat.SegmentTypeFace || outbound.Segments[0].Data.ID != "12" {
+		t.Fatalf("unexpected face segment: %#v", outbound.Segments[0])
+	}
+}
+
+func TestHandleFaceIDCommandBuildsRangeFaceSegments(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	match := service.matchCommand(".faceid 12-14")
+	if match == nil {
+		t.Fatal("expected faceid command to match")
+	}
+	outbound, err := service.handleFaceIDCommand(context.Background(), "123", "4456", *match)
+	if err != nil {
+		t.Fatalf("handle faceid command: %v", err)
+	}
+	if outbound == nil || len(outbound.Segments) != 3 {
+		t.Fatalf("unexpected outbound: %#v", outbound)
+	}
+	for i, wantID := range []napcat.ID{"12", "13", "14"} {
+		if outbound.Segments[i].Type != napcat.SegmentTypeFace || outbound.Segments[i].Data.ID != wantID {
+			t.Fatalf("unexpected segment at %d: %#v", i, outbound.Segments[i])
+		}
+	}
+}
+
+func TestHandleFaceIDCommandRejectsInvalidRange(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	for _, input := range []string{".faceid 0", ".faceid 3-1"} {
+		match := service.matchCommand(input)
+		if match == nil {
+			t.Fatalf("expected %q to match before handler validation", input)
+		}
+		outbound, err := service.handleFaceIDCommand(context.Background(), "123", "4456", *match)
+		if err != nil {
+			t.Fatalf("handle faceid command: %v", err)
+		}
+		if outbound == nil || outbound.Message != "参数错误" {
+			t.Fatalf("unexpected outbound for %q: %#v", input, outbound)
+		}
+	}
+}
+
+func TestHandleFaceIDCommandRejectsLargeRange(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	match := service.matchCommand(".faceid 1-21")
+	if match == nil {
+		t.Fatal("expected faceid command to match")
+	}
+	outbound, err := service.handleFaceIDCommand(context.Background(), "123", "4456", *match)
+	if err != nil {
+		t.Fatalf("handle faceid command: %v", err)
+	}
+	if outbound == nil || outbound.Message != "太多啦，最多20个" {
+		t.Fatalf("unexpected outbound: %#v", outbound)
+	}
+}
+
+func TestMultiSendSegmentsSendsSegmentPayload(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+	writer := &recordingOutboundWriter{}
+
+	err := service.multiSendSegments(context.Background(), writer, "123", []napcat.MessageSegment{
+		napcat.NewFaceSegment("12"),
+		napcat.NewFaceSegment("13"),
+	})
+	if err != nil {
+		t.Fatalf("multi send segments: %v", err)
+	}
+
+	var req napcat.SendGroupMsgRequest
+	if err := json.Unmarshal(writer.payload, &req); err != nil {
+		t.Fatalf("unmarshal request: %v", err)
+	}
+	if req.Action != "send_group_msg" || req.Params.GroupID != "123" {
+		t.Fatalf("unexpected request: %#v", req)
+	}
+	if len(req.Params.Message.Segments) != 2 {
+		t.Fatalf("expected 2 segments, got=%d", len(req.Params.Message.Segments))
+	}
+	for i, wantID := range []napcat.ID{"12", "13"} {
+		segment := req.Params.Message.Segments[i]
+		if segment.Type != napcat.SegmentTypeFace || segment.Data.ID != wantID {
+			t.Fatalf("unexpected segment at %d: %#v", i, segment)
+		}
 	}
 }
 
@@ -427,6 +725,15 @@ type stubOutboundWriter struct {
 
 func (s *stubOutboundWriter) WriteText(payload []byte) error {
 	return s.conn.WriteText(payload)
+}
+
+type recordingOutboundWriter struct {
+	payload []byte
+}
+
+func (r *recordingOutboundWriter) WriteText(payload []byte) error {
+	r.payload = append(r.payload[:0], payload...)
+	return nil
 }
 
 type wsTestConn struct {

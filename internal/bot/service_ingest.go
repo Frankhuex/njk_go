@@ -35,24 +35,18 @@ func (s *Service) saveIncomingMessageAndCheckImages(ctx context.Context, event *
 		switch segment.Type {
 		case napcat.SegmentTypeReply:
 			id := segment.Data.ID.String()
-			if id != "" {
-				replyID = &id
-			}
+			textParts = append(textParts, fmt.Sprintf("[CQ:reply,qq=%s]", id))
+			replyID = &id
+
 		case napcat.SegmentTypeAt:
 			userID := strings.TrimSpace(segment.Data.QQ)
 			if userID == "" {
 				continue
 			}
-			user, err := s.store.FindUser(ctx, userID)
-			if err != nil {
-				return nil, err
-			}
-			if user != nil {
-				textParts = append(textParts, "@"+user.Nickname)
-				atUsers = append(atUsers, user.UserID)
-			} else {
-				textParts = append(textParts, "@"+userID)
-			}
+
+			textParts = append(textParts, fmt.Sprintf("[CQ:at,qq=%s]", userID))
+			atUsers = append(atUsers, userID)
+
 		case napcat.SegmentTypeText:
 			textParts = append(textParts, segment.Data.Text)
 		case napcat.SegmentTypeImage:
@@ -65,10 +59,9 @@ func (s *Service) saveIncomingMessageAndCheckImages(ctx context.Context, event *
 				imageURLs = append(imageURLs, segment.Data.URL)
 			}
 		default:
-			if segment.Data.Summary != "" {
-				textParts = append(textParts, fmt.Sprintf("[%s: %s]", segment.Type, segment.Data.Summary))
-			} else {
-				textParts = append(textParts, "["+string(segment.Type)+"]")
+			keyValStr, err := StructToKeyValue(segment.Data)
+			if err == nil {
+				textParts = append(textParts, fmt.Sprintf("[CQ:%s,%s]", segment.Type, keyValStr))
 			}
 		}
 	}
@@ -80,6 +73,7 @@ func (s *Service) saveIncomingMessageAndCheckImages(ctx context.Context, event *
 
 	messageID := event.MessageID.String()
 	messageText := strings.Join(textParts, "")
+	log.Printf("【处理后消息文本】%s", messageText)
 	senderIDCopy := senderID
 	groupIDCopy := groupID
 	card := emptyToNil(event.Sender.Card)

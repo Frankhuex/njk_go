@@ -22,6 +22,7 @@
 - 调用 BBH HTTP 服务处理 `.bbh` 相关命令
 - 对图片做 pHash 消重
 - 从历史消息里提取系统表情并发送 `set_msg_emoji_like`
+- 记录系统表情 ID 与群消息表情回应，并提供 `.getfaceid` / `.allface` 查询
 
 程序入口是 `cmd/server/main.go`。
 
@@ -77,6 +78,8 @@
   - gorm/gen 生成的 model
 - `internal/query/`
   - gorm/gen 生成的 query 层，目前主业务基本未直接使用
+- `scripts/gen_gorm/`
+  - 使用 `gorm.io/gen` 从当前 PostgreSQL schema 生成 `internal/model` 和 `internal/query`
 
 ### 其他
 
@@ -120,18 +123,31 @@ NapCat 入站 JSON 的处理流程：
 
 1. 群白名单过滤
 2. 用户黑名单过滤
-3. 对 `event.RawMessage` 做命令匹配
-4. 如果没有命令但 `@bot`，回退为 `commandNJK`
-5. 按条件决定是否先入库
-6. 执行命令或随机回复
-7. 统一发送文本消息或表情点赞动作
-8. 某些命令也可能统一发送图片消息
+3. 从消息 segments 中提取 `type = "face"` 的系统表情 ID 并 upsert 到 `face` 表
+4. 对 `event.RawMessage` 做命令匹配
+5. 如果没有命令但 `@bot`，回退为 `commandNJK`
+6. 按条件决定是否先入库
+7. 执行命令或随机回复
+8. 统一发送文本消息或表情点赞动作
+9. 某些命令也可能统一发送图片消息
 
 重要事实：
 
 - 不是所有入站群消息都会先落库
 - 目前只有“未命中命令”或“命中 `commandNJK`”时，才会先走 `saveIncomingMessageAndCheckImages`
 - 这会影响“命令是否能在数据库里看到当前触发消息”的判断
+- 系统表情 ID 记录不依赖消息是否完整落库，只要群消息通过白名单和黑名单过滤，就会尝试写入 `face`
+
+### Notice
+
+`HandleNotice` 现在有一条特殊早分支：
+
+- `notice_type = group_msg_emoji_like` 会在 `TargetID == SelfID` 判断前处理
+- 表情回应 ID 必须从 `NoticeEvent.Likes []EmojiLike` 遍历读取，不要给 `NoticeEvent` 新增顶层 `EmojiID`
+- 每个 `likes[].emoji_id` 会先 upsert 到 `face`，再写入 `emoji_like`
+- 如果被贴的 `message_id` 不存在于 `message` 表，会通过 `EnsureNoticeMessage` 补写一条最小占位 message，保存 `message_id`、`group_id`、`sender_id`、`time`
+- 占位 message 用于让 `.getfaceid` 的最近消息查询可以 join 到 `emoji_like`
+- 其他 notice 仍保留原来的 `TargetID == SelfID` 文本响应逻辑
 
 ## 消息入库链路
 
@@ -147,6 +163,7 @@ NapCat 入站 JSON 的处理流程：
    - `at`
    - `text`
    - `image`
+   - `face` 的 ID 会在群消息入口提前写入 `face` 表
 5. 将完整 segments `json.Marshal` 后写入 `message.raw_json`
 6. 将 `event.RawMessage` 写入 `message.raw_message`
 7. 保存 `at_user`
@@ -161,6 +178,33 @@ NapCat 入站 JSON 的处理流程：
 
 - 任何读取历史 `raw_json` 的逻辑，都不能假设它永远能反序列化成 `[]napcat.MessageSegment`
 - 遇到字符串型或非法 JSON 时，应安全跳过，而不是让整条链路失败
+
+### 表情相关表
+
+当前 schema 中有两张系统表情相关表：
+
+- `face`
+  - 主键 `face_id VARCHAR(30)`
+  - 记录群消息里出现过的系统表情 ID，以及 notice 表情回应里出现过的 ID
+- `emoji_like`
+  - 自增主键 `id`
+  - 字段 `message_id`、`user_id`、`face_id`
+  - 表示某个用户对某条消息贴过某个系统表情
+  - `face_id` 外键引用 `face(face_id)`
+  - `message_id` 和 `user_id` 当前不加外键，避免 notice 先到或目标消息未完整落库时丢事件
+
+相关 store 方法：
+
+- `UpsertFace`
+- `SaveEmojiLike`
+- `EnsureNoticeMessage`
+- `RecentFaceIDRows`
+- `AllFaceIDs`
+
+生成 model/query 的脚本：
+
+- `generate_gorm.sh`
+- `scripts/gen_gorm/main.go`
 
 ## 出站消息主链路
 
@@ -260,6 +304,9 @@ NapCat 入站 JSON 的处理流程：
 - 历史/统计类
   - `.报告`
   - `.face`
+  - `.faceid`
+  - `.getfaceid`
+  - `.allface`
 - 工具类
   - `.XdY` 掷骰子，例如 `.2d6`、`.2 d 6`
   - `.对称左` / `.对称右` / `.对称上` / `.对称下`
@@ -315,6 +362,8 @@ NapCat 入站 JSON 的处理流程：
 
 - `RecentMessages`
 - `RecentMessageImages`
+- `RecentFaceIDRows`
+- `AllFaceIDs`
 - `MessagesSince`
 
 `StoredMessage` 当前已经包含：
@@ -371,7 +420,9 @@ NapCat 入站 JSON 的处理流程：
 
 ## .face 功能现状
 
-`.face` 已经落地，不再是待实现需求。
+`.face`、`.faceid`、`.getfaceid`、`.allface` 都是当前系统表情相关能力。
+
+### `.face`
 
 当前实现要点：
 
@@ -388,6 +439,47 @@ NapCat 入站 JSON 的处理流程：
 
 - 当前正则允许 `.face12`
 - 如果后续要调整语义，不要只改文档，必须同步更新正则和测试
+
+### `.faceid`
+
+当前实现要点：
+
+- 命令在 `prompts.go` 中注册，正则允许 `.faceid12` 和 `.faceid 12`
+- handler 在 `internal/bot/command_faceid.go`
+- 支持单个 ID 和范围，例如 `.faceid 12`、`.faceid 12-15`
+- 返回 `face` segment 和 `EmojiLikeIDs`，由统一发送链路处理
+
+额外注意：
+
+- 当前 `.faceid` 相关测试断言可能与 handler 的真实返回结构不完全同步，改这块时先确认到底是实现语义还是测试断言需要调整
+
+### `.getfaceid`
+
+当前实现要点：
+
+- 命令在 `prompts.go` 中注册，正则允许 `.getfaceid12` 和 `.getfaceid 12`
+- handler 在 `internal/bot/command_getfaceid.go`
+- 查询逻辑在 `Store.RecentFaceIDRows`
+- 先取本群最近 N 条已保存 message，再按时间从旧到新输出
+- 对每条消息最多输出两行：`发：...` 表示 raw_json segments 内的 face ID，`贴：...` 表示 `emoji_like` 表中这条消息收到的 face ID
+- 每行内部的 face ID 使用数字友好的递增排序，并用中文全角逗号 `，` 拼接
+- 如果没有查到任何 ID，返回 `没有查到`
+
+重要依赖：
+
+- `.getfaceid` 依赖 `message` 表作为最近消息窗口，再 join `emoji_like`
+- 对仅由 notice 产生、原始群消息未完整落库的目标消息，`EnsureNoticeMessage` 会补写最小占位 message，避免 join 不到
+
+### `.allface`
+
+当前实现要点：
+
+- 命令在 `prompts.go` 中注册，正则为不带参数的 `.allface`
+- handler 在 `internal/bot/command_allface.go`
+- 查询逻辑在 `Store.AllFaceIDs`
+- 第一行输出 `face` 表中所有 ID：`全部：...`
+- 第二行输出 `emoji_like` 表中出现过的去重 ID：`贴过的：...`
+- 两行都使用数字友好的递增排序，冒号和逗号使用中文全角符号
 
 ## 骰子命令现状
 
@@ -531,6 +623,7 @@ NapCat 入站 JSON 的处理流程：
   - 命令匹配
   - 报告格式
   - `.face`
+  - `.faceid` / `.getfaceid` / `.allface`
   - 骰子命令
   - 对称命令匹配与部分图片处理行为
   - 黑名单过滤
@@ -558,6 +651,7 @@ NapCat 入站 JSON 的处理流程：
 另外：
 
 - `config_test.go` 里可能存在过时断言
+- `.faceid` 相关测试断言可能与当前 handler 返回结构不同步
 - 改配置逻辑时，先核对实现和测试谁才是最新事实
 
 ## 调试方法
@@ -571,6 +665,7 @@ NapCat 入站 JSON 的处理流程：
 额外约定：
 
 - agent 需要完成到“测试通过 + 服务成功启动”这一步
+- 如果遇到已知的 `.faceid` 测试断言失败，先判断是否与当前改动相关，不要为了通过测试盲目改 handler 语义
 - 服务开起来之后，后续实际联调或人工验证无需 agent 继续操作
 
 ## 常见改动导航
@@ -591,6 +686,18 @@ NapCat 入站 JSON 的处理流程：
 - `internal/bot/service_ingest.go`
 - `internal/bot/store.go`
 - `sql/create_njk_tables.sql`
+
+### 想改系统表情/表情回应逻辑
+
+优先看：
+
+- `internal/bot/face_storage.go`
+- `internal/bot/command_face.go`
+- `internal/bot/command_faceid.go`
+- `internal/bot/command_getfaceid.go`
+- `internal/bot/command_allface.go`
+- `internal/bot/store.go`
+- `internal/napcat/types.go`
 
 ### 想改消息发送逻辑
 
@@ -662,6 +769,12 @@ NapCat 入站 JSON 的处理流程：
 - 统一发送点在 `HandleGroupMessage`
 - 实际发送 helper 是 `multiSendGroupImages(...)`
 
+### 8. group_msg_emoji_like 不要读取顶层 EmojiID
+
+- `NoticeEvent` 没有也不应新增顶层 `EmojiID`
+- 表情回应 ID 从 `NoticeEvent.Likes []EmojiLike` 遍历读取
+- notice 目标消息可能没有完整群消息入库，需要依赖 `EnsureNoticeMessage` 补占位 message
+
 ## 推荐阅读顺序
 
 第一次接手本仓库时，建议按这个顺序阅读：
@@ -684,6 +797,7 @@ NapCat 入站 JSON 的处理流程：
 - 入库功能：`service_ingest.go` -> `store.go` -> `sql/create_njk_tables.sql`
 - 出站功能：`service_ingress.go` -> `state.go` -> `napcat/types.go`
 - 图片功能：`service_ingest.go` -> `image.go` -> `store.go`
+- 系统表情功能：`face_storage.go` -> `command_face*.go` / `command_allface.go` -> `store.go`
 
 ## 文档维护原则
 

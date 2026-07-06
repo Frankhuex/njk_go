@@ -10,6 +10,7 @@ import (
 type pendingOutbound struct {
 	GroupID            string
 	Message            string
+	Segments           []napcat.MessageSegment
 	ImageURLs          []string
 	ImageSegmentType   napcat.SegmentType
 	ShouldSave         bool

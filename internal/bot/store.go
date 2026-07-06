@@ -15,6 +15,12 @@ type Store struct {
 	db *gorm.DB
 }
 
+type GetFaceIDMessageRow struct {
+	MessageID        string
+	SegmentFaceIDs   []string
+	EmojiLikeFaceIDs []string
+}
+
 func NewStore(db *gorm.DB) *Store {
 	return &Store{db: db}
 }
@@ -89,6 +95,73 @@ func (s *Store) SaveAtUser(ctx context.Context, messageID string, userID string)
 	}).Error
 }
 
+func (s *Store) UpsertFace(ctx context.Context, faceID string) error {
+	if faceID == "" {
+		return nil
+	}
+	return s.db.WithContext(ctx).Clauses(clause.OnConflict{DoNothing: true}).Create(&model.Face{
+		FaceID: faceID,
+	}).Error
+}
+
+func (s *Store) SaveEmojiLike(ctx context.Context, messageID string, userID string, faceID string) error {
+	if messageID == "" || userID == "" || faceID == "" {
+		return nil
+	}
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.Face{
+			FaceID: faceID,
+		}).Error; err != nil {
+			return err
+		}
+		return tx.Create(&model.EmojiLike{
+			MessageID: messageID,
+			UserID:    userID,
+			FaceID:    faceID,
+		}).Error
+	})
+}
+
+func (s *Store) EnsureNoticeMessage(ctx context.Context, messageID string, groupID string, userID string, eventTime int64) error {
+	if messageID == "" {
+		return nil
+	}
+	messageTime := time.Now()
+	if eventTime > 0 {
+		messageTime = time.Unix(eventTime, 0)
+	}
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if userID != "" {
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "user_id"}},
+				DoNothing: true,
+			}).Create(&model.User{
+				UserID:   userID,
+				Nickname: "",
+			}).Error; err != nil {
+				return err
+			}
+		}
+		if groupID != "" {
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "group_id"}},
+				DoNothing: true,
+			}).Create(&model.Group{
+				GroupID:   groupID,
+				GroupName: "",
+			}).Error; err != nil {
+				return err
+			}
+		}
+		return tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.Message{
+			MessageID: messageID,
+			Time:      messageTime,
+			SenderID:  nullableString(userID),
+			GroupID:   nullableString(groupID),
+		}).Error
+	})
+}
+
 func (s *Store) SaveImage(ctx context.Context, messageID string, imageHash string, imageURL string) (*model.Image, error) {
 	record := &model.Image{
 		MessageID: messageID,
@@ -160,6 +233,96 @@ func (s *Store) RecentMessageImages(ctx context.Context, groupID string, limit i
 		return nil, err
 	}
 	return rows, nil
+}
+
+func (s *Store) RecentFaceIDRows(ctx context.Context, groupID string, limit int) ([]GetFaceIDMessageRow, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
+
+	type recentMessageRow struct {
+		MessageID string `gorm:"column:message_id"`
+		RawJSON   string `gorm:"column:raw_json"`
+	}
+	var recentMessages []recentMessageRow
+	if err := s.db.WithContext(ctx).Raw(`
+		SELECT recent.message_id, recent.raw_json
+		FROM (
+			SELECT m.message_id, m."time", COALESCE(m.raw_json::text, '') AS raw_json
+			FROM message AS m
+			WHERE m.group_id = ?
+			ORDER BY m."time" DESC
+			LIMIT ?
+		) AS recent
+		ORDER BY recent."time" ASC
+	`, groupID, limit).Scan(&recentMessages).Error; err != nil {
+		return nil, err
+	}
+	if len(recentMessages) == 0 {
+		return nil, nil
+	}
+
+	result := make([]GetFaceIDMessageRow, 0, len(recentMessages))
+	rowByMessageID := make(map[string]*GetFaceIDMessageRow, len(recentMessages))
+	for _, recent := range recentMessages {
+		row := GetFaceIDMessageRow{MessageID: recent.MessageID}
+		if faceIDs, err := extractFaceIDsFromRawJSON(recent.RawJSON); err == nil {
+			row.SegmentFaceIDs = faceIDs
+			sortFaceIDs(row.SegmentFaceIDs)
+		}
+		result = append(result, row)
+		rowByMessageID[recent.MessageID] = &result[len(result)-1]
+	}
+
+	type emojiLikeFaceIDRow struct {
+		MessageID string `gorm:"column:message_id"`
+		FaceID    string `gorm:"column:face_id"`
+	}
+	var likeRows []emojiLikeFaceIDRow
+	if err := s.db.WithContext(ctx).Raw(`
+		SELECT recent.message_id, el.face_id
+		FROM emoji_like AS el
+		INNER JOIN (
+			SELECT m.message_id, m."time"
+			FROM message AS m
+			WHERE m.group_id = ?
+			ORDER BY m."time" DESC
+			LIMIT ?
+		) AS recent ON recent.message_id = el.message_id
+		ORDER BY
+			recent."time" ASC,
+			CASE WHEN el.face_id ~ '^\d+$' THEN el.face_id::bigint END ASC NULLS LAST,
+			el.face_id ASC
+	`, groupID, limit).Scan(&likeRows).Error; err != nil {
+		return nil, err
+	}
+	for _, likeRow := range likeRows {
+		row := rowByMessageID[likeRow.MessageID]
+		if row == nil {
+			continue
+		}
+		row.EmojiLikeFaceIDs = append(row.EmojiLikeFaceIDs, likeRow.FaceID)
+	}
+	for i := range result {
+		sortFaceIDs(result[i].EmojiLikeFaceIDs)
+	}
+	return result, nil
+}
+
+func (s *Store) AllFaceIDs(ctx context.Context) ([]string, []string, error) {
+	var allFaceIDs []string
+	if err := s.db.WithContext(ctx).Raw(`SELECT face_id FROM face`).Scan(&allFaceIDs).Error; err != nil {
+		return nil, nil, err
+	}
+	sortFaceIDs(allFaceIDs)
+
+	var likedFaceIDs []string
+	if err := s.db.WithContext(ctx).Raw(`SELECT DISTINCT face_id FROM emoji_like`).Scan(&likedFaceIDs).Error; err != nil {
+		return nil, nil, err
+	}
+	sortFaceIDs(likedFaceIDs)
+
+	return allFaceIDs, likedFaceIDs, nil
 }
 
 func (s *Store) MessagesSince(ctx context.Context, groupID string, start time.Time) ([]StoredMessage, error) {
@@ -279,7 +442,7 @@ func (m StoredMessage) Format() string {
 	if name == "" {
 		name = "Unknown User"
 	}
-	return fmt.Sprintf("[%s] %s (%s): %s", formatDisplayTime(m.Time), name, m.SenderID, m.Text)
+	return fmt.Sprintf("[%s,消息%s] %s (qq号%s): %s", formatDisplayTime(m.Time), m.MessageID, name, m.SenderID, m.Text)
 }
 
 type StoredImage struct {

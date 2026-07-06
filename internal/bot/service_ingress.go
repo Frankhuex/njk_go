@@ -20,6 +20,10 @@ func (s *Service) HandleNotice(ctx context.Context, conn outboundWriter, clientA
 	}
 
 	log.Printf("【处理Notice】%s - 群ID: %s target_id=%s self_id=%s", clientAddr, event.GroupID, event.TargetID, event.SelfID)
+	if event.NoticeType == napcat.EventNoticeTypeGroupMsgEmojiLike {
+		s.handleGroupMsgEmojiLikeNotice(ctx, event)
+		return
+	}
 
 	if event.TargetID == "" || event.SelfID == "" || event.TargetID != event.SelfID {
 		return
@@ -53,6 +57,7 @@ func (s *Service) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 		log.Printf("【忽略群消息】%s - 用户:%s 在黑名单", clientAddr, senderID)
 		return
 	}
+	s.saveFacesFromGroupMessage(ctx, event)
 
 	rawMessage := event.RawMessage
 	match := s.matchCommand(rawMessage)
@@ -102,6 +107,11 @@ func (s *Service) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 		if response.Message != "" {
 			if err := s.sendGroupText(ctx, conn, response.GroupID, response.Message, response.ShouldSave); err != nil {
 				log.Printf("【发送响应失败】%s - %v", clientAddr, err)
+			}
+		}
+		if len(response.Segments) > 0 {
+			if err := s.multiSendSegments(ctx, conn, response.GroupID, response.Segments); err != nil {
+				log.Printf("【发送消息段响应失败】%s - %v", clientAddr, err)
 			}
 		}
 		if len(response.ImageURLs) > 0 {
@@ -215,6 +225,34 @@ func (s *Service) multiSendGroupImages(ctx context.Context, conn outboundWriter,
 		ShouldSave: false,
 	})
 	log.Printf("【发送群图片】group=%s should_save=%t img_url=%s", groupID, false, strings.Join(sentURLs, ","))
+	return nil
+}
+
+func (s *Service) multiSendSegments(ctx context.Context, conn outboundWriter, groupID string, segments []napcat.MessageSegment) error {
+	if len(segments) == 0 {
+		return nil
+	}
+	req := napcat.SendGroupMsgRequest{
+		Action: "send_group_msg",
+		Params: napcat.SendGroupMsgParams{
+			GroupID: napcat.ID(groupID),
+			Message: napcat.NewSegmentMessage(segments...),
+		},
+	}
+	data, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	if err := conn.WriteText(data); err != nil {
+		return err
+	}
+	s.pending.Push(pendingMessage{
+		GroupID:    groupID,
+		Message:    "",
+		SentAt:     time.Now(),
+		ShouldSave: false,
+	})
+	log.Printf("【发送群消息段】group=%s should_save=%t segment_count=%d", groupID, false, len(segments))
 	return nil
 }
 

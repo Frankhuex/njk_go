@@ -18,6 +18,9 @@ const (
 	commandAIC                commandKey = "aic"
 	commandReport             commandKey = "report"
 	commandFace               commandKey = "face"
+	commandFaceID             commandKey = "face_id"
+	commandGetFaceID          commandKey = "get_face_id"
+	commandAllFace            commandKey = "all_face"
 	commandJSON               commandKey = "json"
 	commandFile               commandKey = "file"
 	commandDice               commandKey = "dice"
@@ -51,6 +54,9 @@ var helpText = `.概括 .总结 .俳句 .无只因 .最 .vs .ccb .xmas
 消息中含有你居垦三个字就会触发自动回复
 .报告 后面需要接数字，表示报告查询的天数
 .face 后面接数字，表示读取本群最近消息里的系统表情并贴到这条指令上
+.faceid 后面接数字或数字范围，表示发送对应id的系统表情，如.faceid 12或.faceid 12-15
+.getfaceid 后面接数字，表示读取本群最近消息里的系统表情id和收到过的表情回应id
+.allface 查看所有已记录系统表情id和被贴过的系统表情id
 .json 后面接数字，表示返回本群最近已保存消息的raw_json
 .file 后面接数字，表示把本群最近消息里的图片/动图作为文件发出
 .2d6 掷2次6面骰子，支持写成 .2 d 6
@@ -191,6 +197,8 @@ ccb句式形如“豌豆笑传之踩踩背”。
 接下来看下面的聊天记录，顺着聊天的内容、氛围、时间节点，说一句贴合的话。
 聊天的语气要像现实里的群友，平衡好轻松和正经的感觉，句子不用加句末标点，尽量简短自然，融入对话就行。
 如果聊天记录里有人在问你问题，直接自然回应就好。
+仅在合适的条件下，可以在回复文本中插入[CQ:reply,id=%s]来回复他人，将%s替换为目标消息的ID即可；可以插入[CQ:at,qq=%s]来at他人，%s替换为对方的qq号。
+某些别人发的中括号占位符，你可以模仿。
 只输出你要说的那句话，不要加说话人、冒号，也不要有其他多余的内容，注意一定要贴合最新消息的语境。`,
 		},
 		{
@@ -204,6 +212,18 @@ ccb句式形如“豌豆笑传之踩踩背”。
 		{
 			Key:     commandFace,
 			Pattern: `^ *\.face *(\d+) *$`,
+		},
+		{
+			Key:     commandFaceID,
+			Pattern: `^ *\.faceid *(\d+)(?:-(\d+))? *$`,
+		},
+		{
+			Key:     commandGetFaceID,
+			Pattern: `^ *\.getfaceid *(\d+) *$`,
+		},
+		{
+			Key:     commandAllFace,
+			Pattern: `^ *\.allface *$`,
 		},
 		{
 			Key:     commandJSON,
