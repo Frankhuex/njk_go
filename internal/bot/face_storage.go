@@ -102,6 +102,9 @@ func (s *Service) handleGroupMsgEmojiLikeNotice(ctx context.Context, event *napc
 		log.Printf("【表情回应入库跳过】message_id=%s user_id=%s face_id为空", messageID, userID)
 		return
 	}
+	if err := s.store.EnsureNoticeMessage(ctx, messageID, event.GroupID.String(), userID, event.Time); err != nil {
+		log.Printf("【表情回应消息补写失败】message_id=%s group_id=%s user_id=%s err=%v", messageID, event.GroupID, userID, err)
+	}
 	for _, faceID := range faceIDs {
 		if err := s.store.SaveEmojiLike(ctx, messageID, userID, faceID); err != nil {
 			log.Printf("【表情回应入库失败】message_id=%s user_id=%s face_id=%s err=%v", messageID, userID, faceID, err)

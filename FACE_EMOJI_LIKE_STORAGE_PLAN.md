@@ -611,3 +611,131 @@ go test ./internal/bot ./internal/napcat ./internal/model ./internal/query
 ```
 
 如果现有 `.faceid` 测试仍未修复，`go test ./...` 可能继续失败；需要区分本次 `.getfaceid` 改动与已有失败。
+
+## `.allface` 指令方案
+
+### 需求语义
+
+新增指令：
+
+```text
+.allface
+```
+
+该指令只有一个点和单词，不接数字。正则参考 `.help`，允许前后空格：
+
+```go
+Pattern: `^ *\.allface *$`
+```
+
+执行流程：
+
+1. 从 `face` 表取出所有 `face_id`。
+2. 从 `emoji_like` 表取出所有出现过的 `face_id`。
+3. 两组 id 分别递增排序。
+4. 输出固定两行：第一行 `全部：` 后接 `face` 表 id；第二行 `贴过的：` 后接 `emoji_like` 表 id。
+5. 逗号和冒号都使用中文全角符号，即 `，` 和 `：`。
+
+`emoji_like` 是事件流水表，同一个 `face_id` 可能出现多次。这里建议用 `DISTINCT face_id` 输出“贴过的表情 id 集合”，否则重复点赞会导致第二行出现大量重复 id，不利于查看所有可用 id。
+
+示例输出：
+
+```text
+全部：1，2，10，66
+贴过的：2，66
+```
+
+如果某一侧没有 id，仍保留对应行，例如：
+
+```text
+全部：
+贴过的：
+```
+
+### 命令注册
+
+在 `internal/bot/prompts.go` 新增 command key：
+
+```go
+commandAllFace commandKey = "all_face"
+```
+
+在 `commandDefs` 中新增：
+
+```go
+{
+    Key:     commandAllFace,
+    Pattern: `^ *\.allface *$`,
+}
+```
+
+建议更新 `helpText`：
+
+```text
+.allface 查看所有已记录系统表情id和被贴过的系统表情id
+```
+
+### Handler 接入
+
+在 `internal/bot/commands.go` 的 `buildCommandHandler` 增加分支：
+
+```go
+case commandAllFace:
+    return func(ctx context.Context, event *napcat.GroupMessageEvent, match matchedCommand) (*pendingOutbound, error) {
+        return s.handleAllFaceCommand(ctx, event.GroupID.String())
+    }
+```
+
+建议新增文件：
+
+```text
+internal/bot/command_allface.go
+```
+
+handler 逻辑：
+
+```go
+func (s *Service) handleAllFaceCommand(ctx context.Context, groupID string) (*pendingOutbound, error) {
+    allFaceIDs, likedFaceIDs, err := s.store.AllFaceIDs(ctx)
+    if err != nil {
+        return nil, err
+    }
+    return simpleOutbound(groupID, formatAllFaceIDs(allFaceIDs, likedFaceIDs)), nil
+}
+```
+
+### Store 查询设计
+
+在 `internal/bot/store.go` 新增：
+
+```go
+func (s *Store) AllFaceIDs(ctx context.Context) ([]string, []string, error)
+```
+
+推荐 SQL：
+
+```sql
+SELECT face_id FROM face;
+
+SELECT DISTINCT face_id FROM emoji_like;
+```
+
+取出后统一复用 `sortFaceIDs` 做数字友好的递增排序。这样不用在 SQL 中重复写数字排序表达式，也能保证 `face` 和 `emoji_like` 两边排序规则完全一致。
+
+格式化 helper：
+
+```go
+func formatAllFaceIDs(allFaceIDs []string, likedFaceIDs []string) string {
+    return "全部：" + strings.Join(allFaceIDs, "，") + "\n" +
+        "贴过的：" + strings.Join(likedFaceIDs, "，")
+}
+```
+
+### 测试建议
+
+建议补以下测试：
+
+1. `TestMatchCommandSupportsAllFace`：`.allface` 匹配 `commandAllFace`。
+2. `TestMatchCommandRejectsAllFaceWithArg`：`.allface 1` 不匹配。
+3. `TestFormatAllFaceIDsUsesFullWidthPunctuation`：确认输出两行、使用 `：` 和 `，`。
+4. 如果补 DB 测试，覆盖 `AllFaceIDs`：`face` 表全量返回，`emoji_like` 侧 `DISTINCT` 后返回，并按数字递增排序。

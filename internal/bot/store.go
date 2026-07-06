@@ -122,6 +122,46 @@ func (s *Store) SaveEmojiLike(ctx context.Context, messageID string, userID stri
 	})
 }
 
+func (s *Store) EnsureNoticeMessage(ctx context.Context, messageID string, groupID string, userID string, eventTime int64) error {
+	if messageID == "" {
+		return nil
+	}
+	messageTime := time.Now()
+	if eventTime > 0 {
+		messageTime = time.Unix(eventTime, 0)
+	}
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if userID != "" {
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "user_id"}},
+				DoNothing: true,
+			}).Create(&model.User{
+				UserID:   userID,
+				Nickname: "",
+			}).Error; err != nil {
+				return err
+			}
+		}
+		if groupID != "" {
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "group_id"}},
+				DoNothing: true,
+			}).Create(&model.Group{
+				GroupID:   groupID,
+				GroupName: "",
+			}).Error; err != nil {
+				return err
+			}
+		}
+		return tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.Message{
+			MessageID: messageID,
+			Time:      messageTime,
+			SenderID:  nullableString(userID),
+			GroupID:   nullableString(groupID),
+		}).Error
+	})
+}
+
 func (s *Store) SaveImage(ctx context.Context, messageID string, imageHash string, imageURL string) (*model.Image, error) {
 	record := &model.Image{
 		MessageID: messageID,
@@ -206,11 +246,15 @@ func (s *Store) RecentFaceIDRows(ctx context.Context, groupID string, limit int)
 	}
 	var recentMessages []recentMessageRow
 	if err := s.db.WithContext(ctx).Raw(`
-		SELECT m.message_id, COALESCE(m.raw_json::text, '') AS raw_json
-		FROM message AS m
-		WHERE m.group_id = ?
-		ORDER BY m."time" DESC
-		LIMIT ?
+		SELECT recent.message_id, recent.raw_json
+		FROM (
+			SELECT m.message_id, m."time", COALESCE(m.raw_json::text, '') AS raw_json
+			FROM message AS m
+			WHERE m.group_id = ?
+			ORDER BY m."time" DESC
+			LIMIT ?
+		) AS recent
+		ORDER BY recent."time" ASC
 	`, groupID, limit).Scan(&recentMessages).Error; err != nil {
 		return nil, err
 	}
@@ -246,7 +290,7 @@ func (s *Store) RecentFaceIDRows(ctx context.Context, groupID string, limit int)
 			LIMIT ?
 		) AS recent ON recent.message_id = el.message_id
 		ORDER BY
-			recent."time" DESC,
+			recent."time" ASC,
 			CASE WHEN el.face_id ~ '^\d+$' THEN el.face_id::bigint END ASC NULLS LAST,
 			el.face_id ASC
 	`, groupID, limit).Scan(&likeRows).Error; err != nil {
@@ -263,6 +307,22 @@ func (s *Store) RecentFaceIDRows(ctx context.Context, groupID string, limit int)
 		sortFaceIDs(result[i].EmojiLikeFaceIDs)
 	}
 	return result, nil
+}
+
+func (s *Store) AllFaceIDs(ctx context.Context) ([]string, []string, error) {
+	var allFaceIDs []string
+	if err := s.db.WithContext(ctx).Raw(`SELECT face_id FROM face`).Scan(&allFaceIDs).Error; err != nil {
+		return nil, nil, err
+	}
+	sortFaceIDs(allFaceIDs)
+
+	var likedFaceIDs []string
+	if err := s.db.WithContext(ctx).Raw(`SELECT DISTINCT face_id FROM emoji_like`).Scan(&likedFaceIDs).Error; err != nil {
+		return nil, nil, err
+	}
+	sortFaceIDs(likedFaceIDs)
+
+	return allFaceIDs, likedFaceIDs, nil
 }
 
 func (s *Store) MessagesSince(ctx context.Context, groupID string, start time.Time) ([]StoredMessage, error) {

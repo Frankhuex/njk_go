@@ -171,6 +171,31 @@ func TestMatchCommandRejectsInvalidGetFaceID(t *testing.T) {
 	}
 }
 
+func TestMatchCommandSupportsAllFace(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	match := service.matchCommand(".allface")
+	if match == nil || match.Command.Key != commandAllFace {
+		t.Fatalf("expected .allface to match allface command, got=%v", match)
+	}
+}
+
+func TestMatchCommandRejectsAllFaceWithArg(t *testing.T) {
+	service := NewService(config.Config{
+		BotUserID:       "1558109748",
+		BotNickname:     "你居垦",
+		AllowedGroupIDs: map[string]struct{}{},
+	}, nil, nil, nil, nil)
+
+	if match := service.matchCommand(".allface 1"); match != nil {
+		t.Fatalf("expected .allface with arg not to match, got=%v", match)
+	}
+}
+
 func TestMatchCommandSupportsJSONWithOptionalSpace(t *testing.T) {
 	service := NewService(config.Config{
 		BotUserID:       "1558109748",
@@ -446,7 +471,7 @@ func TestSortFaceIDsNumericOrder(t *testing.T) {
 	}
 }
 
-func TestFormatGetFaceIDRowsGroupsByMessageAndSource(t *testing.T) {
+func TestFormatGetFaceIDRowsGroupsBySource(t *testing.T) {
 	rows := []GetFaceIDMessageRow{
 		{
 			MessageID:        "1003",
@@ -467,13 +492,21 @@ func TestFormatGetFaceIDRowsGroupsByMessageAndSource(t *testing.T) {
 
 	got := formatGetFaceIDRows(rows)
 	want := strings.Join([]string{
-		"消息1003 segment：1，2，10",
-		"消息1003 like：5，66",
-		"消息1002 segment：14",
-		"消息1001 like：77，77",
+		"发：1，2，10",
+		"贴：5，66",
+		"发：14",
+		"贴：77，77",
 	}, "\n")
 	if got != want {
 		t.Fatalf("unexpected formatted rows:\n%s", got)
+	}
+}
+
+func TestFormatAllFaceIDsUsesFullWidthPunctuation(t *testing.T) {
+	got := formatAllFaceIDs([]string{"1", "2", "10"}, []string{"2", "10"})
+	want := "全部：1，2，10\n贴过的：2，10"
+	if got != want {
+		t.Fatalf("unexpected allface output: %q", got)
 	}
 }
 
