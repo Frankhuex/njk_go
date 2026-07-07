@@ -7,7 +7,7 @@ import (
 	"njk_go/internal/util/uface"
 )
 
-func (s *Service) handleFaceCommand(ctx context.Context, groupID string, messageID string, match CommandMatch) (*pendingOutbound, error) {
+func (s *Service) handleFaceCommand(ctx context.Context, groupID string, messageID string, match CommandMatch) (*OutboundAction, error) {
 	count, _ := strconv.Atoi(match.Groups[1])
 	history, err := s.store.RecentMessages(ctx, groupID, count)
 	if err != nil {
@@ -29,7 +29,7 @@ func (s *Service) handleFaceCommand(ctx context.Context, groupID string, message
 		return nil, nil
 	}
 
-	return &pendingOutbound{
+	return &OutboundAction{
 		GroupID:            groupID,
 		EmojiLikeMessageID: messageID,
 		EmojiLikeIDs:       emojiIDs,

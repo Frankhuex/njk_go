@@ -18,8 +18,6 @@ type OutboundAction struct {
 	EmojiLikeIDs       []string
 }
 
-type pendingOutbound = OutboundAction
-
 type pendingMessage struct {
 	GroupID    string
 	Message    string

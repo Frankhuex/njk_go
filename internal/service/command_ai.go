@@ -13,7 +13,7 @@ import (
 	"njk_go/internal/util/utime"
 )
 
-func (s *Service) handleAIPromptCommand(ctx context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
+func (s *Service) handleAIPromptCommand(ctx context.Context, groupID string, match CommandMatch) (*OutboundAction, error) {
 	count, _ := strconv.Atoi(match.Groups[1])
 	history, err := s.historyStrings(ctx, groupID, count)
 	if err != nil {
@@ -29,7 +29,7 @@ func (s *Service) handleAIPromptCommand(ctx context.Context, groupID string, mat
 	return simpleOutbound(groupID, result), nil
 }
 
-func (s *Service) handleAICommand(ctx context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
+func (s *Service) handleAICommand(ctx context.Context, groupID string, match CommandMatch) (*OutboundAction, error) {
 	count, _ := strconv.Atoi(match.Groups[1])
 	history, err := s.store.RecentMessages(ctx, groupID, count)
 	if err != nil {
@@ -46,7 +46,7 @@ func (s *Service) handleAICommand(ctx context.Context, groupID string, match Com
 	return savedReplyOutbound(groupID, history[0].MessageID, result), nil
 }
 
-func (s *Service) handleAICCommand(ctx context.Context, groupID string) (*pendingOutbound, error) {
+func (s *Service) handleAICCommand(ctx context.Context, groupID string) (*OutboundAction, error) {
 	start, ok := s.getLastAI(groupID)
 	if !ok {
 		return simpleOutbound(groupID, "请先发起一次「.ai后接数字」"), nil
@@ -69,7 +69,7 @@ func (s *Service) handleAICCommand(ctx context.Context, groupID string) (*pendin
 	return savedReplyOutbound(groupID, history[0].MessageID, result), nil
 }
 
-func (s *Service) handleReportCommand(ctx context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
+func (s *Service) handleReportCommand(ctx context.Context, groupID string, match CommandMatch) (*OutboundAction, error) {
 	dayNum, _ := strconv.Atoi(match.Groups[1])
 	stats, err := s.store.ReportStats(ctx, groupID, utime.StartOfReport(dayNum, time.Now()), 10)
 	if err != nil {
@@ -78,7 +78,7 @@ func (s *Service) handleReportCommand(ctx context.Context, groupID string, match
 	return simpleOutbound(groupID, formatReport(stats, dayNum, 10)), nil
 }
 
-func (s *Service) GenerateNJKReply(ctx context.Context, event *napcat.GroupMessageEvent, groupID string) (*pendingOutbound, error) {
+func (s *Service) GenerateNJKReply(ctx context.Context, event *napcat.GroupMessageEvent, groupID string) (*OutboundAction, error) {
 	history, err := s.historyStrings(ctx, groupID, urand.Range(10, 30))
 	if err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func (s *Service) GenerateNJKReply(ctx context.Context, event *napcat.GroupMessa
 	if result == "" {
 		return nil, nil
 	}
-	return &pendingOutbound{GroupID: groupID, Message: result, ShouldSave: true}, nil
+	return &OutboundAction{GroupID: groupID, Message: result, ShouldSave: true}, nil
 }
 
 func (s *Service) historyStrings(ctx context.Context, groupID string, count int) ([]string, error) {

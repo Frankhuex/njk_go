@@ -8,7 +8,7 @@ import (
 	"njk_go/internal/util/urand"
 )
 
-func (s *Service) handleDiceCommand(_ context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
+func (s *Service) handleDiceCommand(_ context.Context, groupID string, match CommandMatch) (*OutboundAction, error) {
 	if len(match.Groups) < 3 {
 		return simpleOutbound(groupID, "参数错误"), nil
 	}

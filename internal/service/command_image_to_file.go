@@ -8,7 +8,7 @@ import (
 	"njk_go/internal/dal/model"
 )
 
-func (s *Service) handleImageToFileCommand(ctx context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
+func (s *Service) handleImageToFileCommand(ctx context.Context, groupID string, match CommandMatch) (*OutboundAction, error) {
 	if len(match.Groups) < 2 {
 		return simpleOutbound(groupID, "参数错误"), nil
 	}

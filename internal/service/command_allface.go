@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func (s *Service) handleAllFaceCommand(ctx context.Context, groupID string) (*pendingOutbound, error) {
+func (s *Service) handleAllFaceCommand(ctx context.Context, groupID string) (*OutboundAction, error) {
 	allFaceIDs, likedFaceIDs, err := s.store.AllFaceIDs(ctx)
 	if err != nil {
 		return nil, err
