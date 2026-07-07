@@ -49,12 +49,9 @@ func sortFaceIDs(faceIDs []string) {
 	})
 }
 
-func emojiLikeFaceIDs(event *napcat.NoticeEvent) []string {
-	if event == nil {
-		return nil
-	}
+func emojiLikeFaceIDs(likes []napcat.EmojiLike) []string {
 	seen := map[string]struct{}{}
-	faceIDs := make([]string, 0, len(event.Likes))
+	faceIDs := make([]string, 0, len(likes))
 	add := func(faceID string) {
 		faceID = strings.TrimSpace(faceID)
 		if faceID == "" {
@@ -66,7 +63,7 @@ func emojiLikeFaceIDs(event *napcat.NoticeEvent) []string {
 		seen[faceID] = struct{}{}
 		faceIDs = append(faceIDs, faceID)
 	}
-	for _, like := range event.Likes {
+	for _, like := range likes {
 		add(like.EmojiID)
 	}
 	return faceIDs
@@ -97,7 +94,7 @@ func (s *Service) handleGroupMsgEmojiLikeNotice(ctx context.Context, event *napc
 		log.Printf("【表情回应入库跳过】message_id=%s user_id=%s", messageID, userID)
 		return
 	}
-	faceIDs := emojiLikeFaceIDs(event)
+	faceIDs := emojiLikeFaceIDs(event.Likes)
 	if len(faceIDs) == 0 {
 		log.Printf("【表情回应入库跳过】message_id=%s user_id=%s face_id为空", messageID, userID)
 		return

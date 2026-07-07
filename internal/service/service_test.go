@@ -276,21 +276,6 @@ func TestImageToFileSourceURLsFromRecordsSkipsBlankURLs(t *testing.T) {
 	}
 }
 
-func TestFileSegmentNameFromImageDataForcesGIFExtension(t *testing.T) {
-	gifData := []byte("GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x00\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;")
-
-	got := fileSegmentNameFromImageData(0, "https://example.com/image.png", gifData)
-	if got != "image_1.gif" {
-		t.Fatalf("expected gif extension for decodable gif data, got=%s", got)
-	}
-
-	pngHeader := []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}
-	got = fileSegmentNameFromImageData(1, "https://example.com/download", pngHeader)
-	if got != "image_2.png" {
-		t.Fatalf("expected png fallback for non-gif data, got=%s", got)
-	}
-}
-
 func TestImageAndFileOutboundSegmentTypes(t *testing.T) {
 	image := imageOutbound("123", []string{"https://example.com/a.png"})
 	if image.ImageSegmentType != napcat.SegmentTypeImage {
@@ -449,13 +434,11 @@ func TestFaceIDsFromSegmentsDeduplicatesAndSkipsBlank(t *testing.T) {
 }
 
 func TestEmojiLikeFaceIDsUsesLikes(t *testing.T) {
-	faceIDs := emojiLikeFaceIDs(&napcat.NoticeEvent{
-		Likes: []napcat.EmojiLike{
-			{EmojiID: "66"},
-			{EmojiID: "77"},
-			{EmojiID: "66"},
-			{EmojiID: ""},
-		},
+	faceIDs := emojiLikeFaceIDs([]napcat.EmojiLike{
+		{EmojiID: "66"},
+		{EmojiID: "77"},
+		{EmojiID: "66"},
+		{EmojiID: ""},
 	})
 	if len(faceIDs) != 2 || faceIDs[0] != "66" || faceIDs[1] != "77" {
 		t.Fatalf("unexpected emoji like face ids: %#v", faceIDs)
@@ -525,7 +508,7 @@ func TestHandleFaceIDCommandBuildsSingleFaceSegment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handle faceid command: %v", err)
 	}
-	if outbound == nil || outbound.ShouldSave || len(outbound.Segments) != 1 {
+	if outbound == nil || !outbound.ShouldSave || len(outbound.Segments) != 1 {
 		t.Fatalf("unexpected outbound: %#v", outbound)
 	}
 	if outbound.Segments[0].Type != napcat.SegmentTypeFace || outbound.Segments[0].Data.ID != "12" {
@@ -587,7 +570,7 @@ func TestHandleFaceIDCommandRejectsLargeRange(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	match := service.matchCommand(".faceid 1-21")
+	match := service.matchCommand(".faceid 1-51")
 	if match == nil {
 		t.Fatal("expected faceid command to match")
 	}
@@ -595,42 +578,8 @@ func TestHandleFaceIDCommandRejectsLargeRange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handle faceid command: %v", err)
 	}
-	if outbound == nil || outbound.Message != "太多啦，最多20个" {
+	if outbound == nil || outbound.Message != "太多啦，最多50个" {
 		t.Fatalf("unexpected outbound: %#v", outbound)
-	}
-}
-
-func TestMultiSendSegmentsSendsSegmentPayload(t *testing.T) {
-	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
-		AllowedGroupIDs: map[string]struct{}{},
-	}, nil, nil, nil, nil)
-	writer := &recordingOutboundWriter{}
-
-	err := service.multiSendSegments(context.Background(), writer, "123", []napcat.MessageSegment{
-		napcat.NewFaceSegment("12"),
-		napcat.NewFaceSegment("13"),
-	})
-	if err != nil {
-		t.Fatalf("multi send segments: %v", err)
-	}
-
-	var req napcat.SendGroupMsgRequest
-	if err := json.Unmarshal(writer.payload, &req); err != nil {
-		t.Fatalf("unmarshal request: %v", err)
-	}
-	if req.Action != "send_group_msg" || req.Params.GroupID != "123" {
-		t.Fatalf("unexpected request: %#v", req)
-	}
-	if len(req.Params.Message.Segments) != 2 {
-		t.Fatalf("expected 2 segments, got=%d", len(req.Params.Message.Segments))
-	}
-	for i, wantID := range []napcat.ID{"12", "13"} {
-		segment := req.Params.Message.Segments[i]
-		if segment.Type != napcat.SegmentTypeFace || segment.Data.ID != wantID {
-			t.Fatalf("unexpected segment at %d: %#v", i, segment)
-		}
 	}
 }
 
@@ -674,16 +623,7 @@ func TestFormatDisplayTimeDoesNotShiftClock(t *testing.T) {
 	}
 }
 
-func TestHandleGroupMessageIgnoresBannedUser(t *testing.T) {
-	serverSide, clientSide := net.Pipe()
-	defer serverSide.Close()
-	defer clientSide.Close()
-
-	conn := &stubOutboundWriter{conn: &wsTestConn{
-		conn:   serverSide,
-		reader: bufio.NewReader(serverSide),
-	}}
-
+func TestIsUserBannedUsesConfig(t *testing.T) {
 	service := NewService(config.Config{
 		BotUserID:       "1558109748",
 		BotNickname:     "你居垦",
@@ -693,29 +633,11 @@ func TestHandleGroupMessageIgnoresBannedUser(t *testing.T) {
 		},
 	}, nil, nil, nil, nil)
 
-	event := &napcat.GroupMessageEvent{
-		Time:       time.Now().Unix(),
-		UserID:     "3889001802",
-		GroupID:    "123456789",
-		RawMessage: ".help",
-		Sender: napcat.Sender{
-			UserID:   "3889001802",
-			Nickname: "banned-user",
-		},
-		Message: napcat.NewTextMessage(".help"),
+	if !service.IsUserBanned("3889001802") {
+		t.Fatal("expected banned user to be detected")
 	}
-
-	service.HandleGroupMessage(context.Background(), conn, "test-client", event)
-
-	_ = clientSide.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-	buf := make([]byte, 1)
-	_, err := clientSide.Read(buf)
-	if err == nil {
-		t.Fatal("expected banned user message to be ignored without response")
-	}
-	netErr, ok := err.(net.Error)
-	if !ok || !netErr.Timeout() {
-		t.Fatalf("expected timeout error, got: %v", err)
+	if service.IsUserBanned("123456") {
+		t.Fatal("unexpected banned result for normal user")
 	}
 }
 

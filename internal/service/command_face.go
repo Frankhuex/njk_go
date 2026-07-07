@@ -8,7 +8,7 @@ import (
 	"njk_go/internal/napcat"
 )
 
-func (s *Service) handleFaceCommand(ctx context.Context, groupID string, messageID string, match matchedCommand) (*pendingOutbound, error) {
+func (s *Service) handleFaceCommand(ctx context.Context, groupID string, messageID string, match CommandMatch) (*pendingOutbound, error) {
 	count, _ := strconv.Atoi(match.Groups[1])
 	history, err := s.store.RecentMessages(ctx, groupID, count)
 	if err != nil {

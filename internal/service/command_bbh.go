@@ -10,7 +10,7 @@ import (
 	"njk_go/internal/client/bbh"
 )
 
-func (s *Service) handleBBHCommand(ctx context.Context, groupID string, match matchedCommand) (*pendingOutbound, error) {
+func (s *Service) handleBBHCommand(ctx context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
 	var (
 		result string
 		err    error

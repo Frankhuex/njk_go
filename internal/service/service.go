@@ -18,10 +18,6 @@ type AICompleter interface {
 	Complete(ctx context.Context, systemPrompt string, userPrompt string, temperature *float64) (string, error)
 }
 
-type outboundWriter interface {
-	WriteText(payload []byte) error
-}
-
 type Service struct {
 	cfg          config.Config
 	store        *Store
@@ -44,6 +40,7 @@ func NewService(cfg config.Config, db *gorm.DB, aiClient AICompleter, freeAIClie
 	commandMap := make(map[commandKey]compiledCommand, len(defs))
 	store := NewStore(db)
 	service := &Service{
+		cfg:          cfg,
 		store:        store,
 		aiClient:     aiClient,
 		freeAIClient: freeAIClient,

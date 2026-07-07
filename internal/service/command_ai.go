@@ -8,7 +8,7 @@ import (
 	"njk_go/internal/napcat"
 )
 
-func (s *Service) handleAIPromptCommand(ctx context.Context, groupID string, match matchedCommand) (*pendingOutbound, error) {
+func (s *Service) handleAIPromptCommand(ctx context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
 	count, _ := strconv.Atoi(match.Groups[1])
 	history, err := s.historyStrings(ctx, groupID, count)
 	if err != nil {
@@ -24,7 +24,7 @@ func (s *Service) handleAIPromptCommand(ctx context.Context, groupID string, mat
 	return simpleOutbound(groupID, result), nil
 }
 
-func (s *Service) handleAICommand(ctx context.Context, groupID string, match matchedCommand) (*pendingOutbound, error) {
+func (s *Service) handleAICommand(ctx context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
 	count, _ := strconv.Atoi(match.Groups[1])
 	history, err := s.store.RecentMessages(ctx, groupID, count)
 	if err != nil {
@@ -64,7 +64,7 @@ func (s *Service) handleAICCommand(ctx context.Context, groupID string) (*pendin
 	return savedReplyOutbound(groupID, history[0].MessageID, result), nil
 }
 
-func (s *Service) handleReportCommand(ctx context.Context, groupID string, match matchedCommand) (*pendingOutbound, error) {
+func (s *Service) handleReportCommand(ctx context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
 	dayNum, _ := strconv.Atoi(match.Groups[1])
 	stats, err := s.store.ReportStats(ctx, groupID, startOfReport(dayNum), 10)
 	if err != nil {

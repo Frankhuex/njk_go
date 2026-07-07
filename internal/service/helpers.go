@@ -75,6 +75,24 @@ func sleepRandomMillis(ctx context.Context, rng *rand.Rand, left int, right int)
 	}
 }
 
+func SleepRandomMillis(ctx context.Context, rng *rand.Rand, left int, right int) error {
+	return sleepRandomMillis(ctx, rng, left, right)
+}
+
+func (s *Service) Random() *rand.Rand {
+	if s == nil {
+		return rand.New(rand.NewSource(time.Now().UnixNano()))
+	}
+	return s.rng
+}
+
+func (s *Service) DownloadImage(ctx context.Context, sourceURL string) ([]byte, error) {
+	if s == nil || s.imageService == nil {
+		return nil, fmt.Errorf("image service not available")
+	}
+	return s.imageService.download(ctx, sourceURL)
+}
+
 func startOfReport(dayNum int) time.Time {
 	now := time.Now()
 	todayFive := time.Date(now.Year(), now.Month(), now.Day(), 5, 0, 0, 0, now.Location())

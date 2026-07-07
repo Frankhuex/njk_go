@@ -42,7 +42,7 @@ const (
 
 const symmetricImageMaxConcurrency = 4
 
-func (s *Service) handleSymmetricCommand(ctx context.Context, groupID string, match matchedCommand) (*pendingOutbound, error) {
+func (s *Service) handleSymmetricCommand(ctx context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
 	if len(match.Groups) < 2 {
 		return simpleOutbound(groupID, "参数错误"), nil
 	}

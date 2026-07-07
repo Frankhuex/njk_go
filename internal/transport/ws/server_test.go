@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	napcathandler "njk_go/internal/handler/napcat"
 	"njk_go/internal/config"
 	"njk_go/internal/napcat"
 	"njk_go/internal/service"
@@ -35,6 +36,7 @@ func TestHandleNoticeSendsGroupMessage(t *testing.T) {
 		BotNickname:     "你居垦",
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
+	handler := napcathandler.New(botService)
 	event := &napcat.NoticeEvent{
 		SelfID:   "1558109748",
 		TargetID: "1558109748",
@@ -44,7 +46,7 @@ func TestHandleNoticeSendsGroupMessage(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		botService.HandleNotice(context.Background(), conn, "test-client", event)
+		handler.HandleNotice(context.Background(), conn, "test-client", event)
 	}()
 
 	payload, err := readFramePayload(clientSide)
@@ -84,13 +86,14 @@ func TestHandleNoticeIgnoresOtherTarget(t *testing.T) {
 		BotNickname:     "你居垦",
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
+	handler := napcathandler.New(botService)
 	event := &napcat.NoticeEvent{
 		SelfID:   "1558109748",
 		TargetID: "42",
 		GroupID:  "123456789",
 	}
 
-	botService.HandleNotice(context.Background(), conn, "test-client", event)
+	handler.HandleNotice(context.Background(), conn, "test-client", event)
 
 	_ = clientSide.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	buf := make([]byte, 1)

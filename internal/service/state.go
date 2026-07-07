@@ -7,7 +7,7 @@ import (
 	"njk_go/internal/napcat"
 )
 
-type pendingOutbound struct {
+type OutboundAction struct {
 	GroupID            string
 	Message            string
 	Segments           []napcat.MessageSegment
@@ -17,6 +17,8 @@ type pendingOutbound struct {
 	EmojiLikeMessageID string
 	EmojiLikeIDs       []string
 }
+
+type pendingOutbound = OutboundAction
 
 type pendingMessage struct {
 	GroupID    string
@@ -45,6 +47,18 @@ func (q *pendingQueue) Pop() *pendingMessage {
 	item := q.items[0]
 	q.items = q.items[1:]
 	return &item
+}
+
+func (s *Service) RecordPending(groupID string, message string, sentAt time.Time, shouldSave bool) {
+	if s == nil || s.pending == nil {
+		return
+	}
+	s.pending.Push(pendingMessage{
+		GroupID:    groupID,
+		Message:    message,
+		SentAt:     sentAt,
+		ShouldSave: shouldSave,
+	})
 }
 
 func (s *Service) setLastAI(groupID string, at time.Time) {

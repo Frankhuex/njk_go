@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 
+	napcathandler "njk_go/internal/handler/napcat"
 	"njk_go/internal/client/imagestore"
 	"njk_go/internal/napcat"
 	"njk_go/internal/service"
@@ -30,11 +31,12 @@ const (
 type Server struct {
 	addr      string
 	service   *service.Service
+	handler   *napcathandler.Handler
 	staticDir string
 }
 
 func NewServer(addr string, service *service.Service) *Server {
-	return &Server{addr: addr, service: service, staticDir: "."}
+	return &Server{addr: addr, service: service, handler: napcathandler.New(service), staticDir: "."}
 }
 
 func (s *Server) ListenAndServe() error {
@@ -112,13 +114,13 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		switch parsed.Kind {
 		case napcat.EventKindNotice:
-			go s.service.HandleNotice(connCtx, wsConn, clientAddr, parsed.Notice)
+			go s.handler.HandleNotice(connCtx, wsConn, clientAddr, parsed.Notice)
 		case napcat.EventKindGroupMessage:
-			go s.service.HandleGroupMessage(connCtx, wsConn, clientAddr, parsed.GroupMessage)
+			go s.handler.HandleGroupMessage(connCtx, wsConn, clientAddr, parsed.GroupMessage)
 		case napcat.EventKindActionResponse:
 			if parsed.Action != nil {
 				log.Printf("【收到回执】%s - status=%s retcode=%d", clientAddr, parsed.Action.Status, parsed.Action.Retcode)
-				go s.service.HandleActionResponse(connCtx, parsed.Action)
+				go s.handler.HandleActionResponse(connCtx, parsed.Action)
 			}
 		default:
 			log.Printf("【收到其他事件】%s - kind=%s", clientAddr, parsed.Kind)
