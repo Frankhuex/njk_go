@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"njk_go/internal/bot"
 	"njk_go/internal/config"
 	"njk_go/internal/napcat"
+	"njk_go/internal/service"
 )
 
 func TestHandleNoticeSendsGroupMessage(t *testing.T) {
@@ -30,7 +30,7 @@ func TestHandleNoticeSendsGroupMessage(t *testing.T) {
 		reader: bufio.NewReader(serverSide),
 	}
 
-	service := bot.NewService(config.Config{
+	botService := service.NewService(config.Config{
 		BotUserID:       "1558109748",
 		BotNickname:     "你居垦",
 		AllowedGroupIDs: map[string]struct{}{},
@@ -44,7 +44,7 @@ func TestHandleNoticeSendsGroupMessage(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		service.HandleNotice(context.Background(), conn, "test-client", event)
+		botService.HandleNotice(context.Background(), conn, "test-client", event)
 	}()
 
 	payload, err := readFramePayload(clientSide)
@@ -79,7 +79,7 @@ func TestHandleNoticeIgnoresOtherTarget(t *testing.T) {
 		reader: bufio.NewReader(serverSide),
 	}
 
-	service := bot.NewService(config.Config{
+	botService := service.NewService(config.Config{
 		BotUserID:       "1558109748",
 		BotNickname:     "你居垦",
 		AllowedGroupIDs: map[string]struct{}{},
@@ -90,7 +90,7 @@ func TestHandleNoticeIgnoresOtherTarget(t *testing.T) {
 		GroupID:  "123456789",
 	}
 
-	service.HandleNotice(context.Background(), conn, "test-client", event)
+	botService.HandleNotice(context.Background(), conn, "test-client", event)
 
 	_ = clientSide.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	buf := make([]byte, 1)

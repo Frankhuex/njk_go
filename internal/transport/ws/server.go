@@ -15,9 +15,9 @@ import (
 	"strings"
 	"sync"
 
-	"njk_go/internal/bot"
 	"njk_go/internal/imagestore"
 	"njk_go/internal/napcat"
+	"njk_go/internal/service"
 )
 
 const (
@@ -29,11 +29,11 @@ const (
 
 type Server struct {
 	addr      string
-	service   *bot.Service
+	service   *service.Service
 	staticDir string
 }
 
-func NewServer(addr string, service *bot.Service) *Server {
+func NewServer(addr string, service *service.Service) *Server {
 	return &Server{addr: addr, service: service, staticDir: "."}
 }
 
