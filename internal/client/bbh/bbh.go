@@ -11,13 +11,13 @@ import (
 	"time"
 )
 
-type Client struct {
+type BBHClient struct {
 	baseURL    string
 	httpClient *http.Client
 }
 
-func NewClient(baseURL string) *Client {
-	return &Client{
+func NewClient(baseURL string) *BBHClient {
+	return &BBHClient{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -25,7 +25,7 @@ func NewClient(baseURL string) *Client {
 	}
 }
 
-func (c *Client) Plaza(ctx context.Context) (*BooksPlazaResponse, error) {
+func (c *BBHClient) Plaza(ctx context.Context) (*BooksPlazaResponse, error) {
 	var resp BooksPlazaResponse
 	if err := c.get(ctx, "/books/plaza", &resp); err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func (c *Client) Plaza(ctx context.Context) (*BooksPlazaResponse, error) {
 	return &resp, nil
 }
 
-func (c *Client) Book(ctx context.Context, bookID int) (*BookResponse, error) {
+func (c *BBHClient) Book(ctx context.Context, bookID int) (*BookResponse, error) {
 	var resp BookResponse
 	if err := c.get(ctx, fmt.Sprintf("/book/%d", bookID), &resp); err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (c *Client) Book(ctx context.Context, bookID int) (*BookResponse, error) {
 	return &resp, nil
 }
 
-func (c *Client) Paragraphs(ctx context.Context, bookID int) (*ParagraphsResponse, error) {
+func (c *BBHClient) Paragraphs(ctx context.Context, bookID int) (*ParagraphsResponse, error) {
 	var resp ParagraphsResponse
 	if err := c.get(ctx, fmt.Sprintf("/book/%d/paragraphs", bookID), &resp); err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (c *Client) Paragraphs(ctx context.Context, bookID int) (*ParagraphsRespons
 	return &resp, nil
 }
 
-func (c *Client) AddParagraph(ctx context.Context, req AddParagraphRequest) (*AddParagraphResponse, error) {
+func (c *BBHClient) AddParagraph(ctx context.Context, req AddParagraphRequest) (*AddParagraphResponse, error) {
 	var resp AddParagraphResponse
 	if err := c.post(ctx, "/paragraph", req, &resp); err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (c *Client) AddParagraph(ctx context.Context, req AddParagraphRequest) (*Ad
 	return &resp, nil
 }
 
-func (c *Client) get(ctx context.Context, path string, out any) error {
+func (c *BBHClient) get(ctx context.Context, path string, out any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func (c *Client) get(ctx context.Context, path string, out any) error {
 	return c.do(req, out)
 }
 
-func (c *Client) post(ctx context.Context, path string, body any, out any) error {
+func (c *BBHClient) post(ctx context.Context, path string, body any, out any) error {
 	data, err := json.Marshal(body)
 	if err != nil {
 		return err
@@ -78,7 +78,7 @@ func (c *Client) post(ctx context.Context, path string, body any, out any) error
 	return c.do(req, out)
 }
 
-func (c *Client) do(req *http.Request, out any) error {
+func (c *BBHClient) do(req *http.Request, out any) error {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return err

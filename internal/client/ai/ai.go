@@ -11,15 +11,15 @@ import (
 	"time"
 )
 
-type Client struct {
+type AIClient struct {
 	baseURL    string
 	apiKey     string
 	modelName  string
 	httpClient *http.Client
 }
 
-func NewClient(baseURL string, apiKey string, modelName string) *Client {
-	return &Client{
+func NewClient(baseURL string, apiKey string, modelName string) *AIClient {
+	return &AIClient{
 		baseURL:   strings.TrimRight(baseURL, "/"),
 		apiKey:    apiKey,
 		modelName: modelName,
@@ -29,7 +29,7 @@ func NewClient(baseURL string, apiKey string, modelName string) *Client {
 	}
 }
 
-func (c *Client) Complete(ctx context.Context, systemPrompt string, userPrompt string, temperature *float64) (string, error) {
+func (c *AIClient) Complete(ctx context.Context, systemPrompt string, userPrompt string, temperature *float64) (string, error) {
 	if c.baseURL == "" {
 		return "", fmt.Errorf("missing base url")
 	}

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"njk_go/internal/bbh"
+	"njk_go/internal/client/bbh"
 )
 
 func (s *Service) handleBBHCommand(ctx context.Context, groupID string, match matchedCommand) (*pendingOutbound, error) {

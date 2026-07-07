@@ -14,13 +14,13 @@ import (
 
 var fileNamePattern = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
 
-type Client struct {
+type ImageStoreClient struct {
 	imagesDir string
 	myURL     string
 }
 
-func NewClient(baseDir string, myURL string) *Client {
-	return &Client{
+func NewClient(baseDir string, myURL string) *ImageStoreClient {
+	return &ImageStoreClient{
 		imagesDir: ImagesDir(baseDir),
 		myURL:     strings.TrimRight(myURL, "/"),
 	}
@@ -33,7 +33,7 @@ func ImagesDir(baseDir string) string {
 	return filepath.Join(baseDir, "images")
 }
 
-func (c *Client) SavePNG(img image.Image, fileName string) error {
+func (c *ImageStoreClient) SavePNG(img image.Image, fileName string) error {
 	if img == nil {
 		return fmt.Errorf("png image is nil")
 	}
@@ -55,7 +55,7 @@ func (c *Client) SavePNG(img image.Image, fileName string) error {
 	return png.Encode(file, img)
 }
 
-func (c *Client) SaveGIF(img *gif.GIF, fileName string) error {
+func (c *ImageStoreClient) SaveGIF(img *gif.GIF, fileName string) error {
 	if img == nil {
 		return fmt.Errorf("gif image is nil")
 	}
@@ -77,7 +77,7 @@ func (c *Client) SaveGIF(img *gif.GIF, fileName string) error {
 	return gif.EncodeAll(file, img)
 }
 
-func (c *Client) ReadImage(fileName string) (string, error) {
+func (c *ImageStoreClient) ReadImage(fileName string) (string, error) {
 	resolvedName, err := normalizeReadName(fileName)
 	if err != nil {
 		return "", err

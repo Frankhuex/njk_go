@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"njk_go/internal/bbh"
+	"njk_go/internal/client/bbh"
+	"njk_go/internal/client/imagestore"
 	"njk_go/internal/config"
-	"njk_go/internal/imagestore"
 
 	"gorm.io/gorm"
 )
@@ -27,9 +27,9 @@ type Service struct {
 	store        *Store
 	aiClient     AICompleter
 	freeAIClient AICompleter
-	bbhClient    *bbh.Client
+	bbhClient    *bbh.BBHClient
 	imageService *ImageService
-	imageStore   *imagestore.Client
+	imageStore   *imagestore.ImageStoreClient
 	commands     []compiledCommand
 	commandMap   map[commandKey]compiledCommand
 	rng          *rand.Rand
@@ -38,13 +38,12 @@ type Service struct {
 	lastAI       map[string]time.Time
 }
 
-func NewService(cfg config.Config, db *gorm.DB, aiClient AICompleter, freeAIClient AICompleter, bbhClient *bbh.Client) *Service {
+func NewService(cfg config.Config, db *gorm.DB, aiClient AICompleter, freeAIClient AICompleter, bbhClient *bbh.BBHClient) *Service {
 	defs := commandDefs(cfg.BotUserID)
 	commands := make([]compiledCommand, 0, len(defs))
 	commandMap := make(map[commandKey]compiledCommand, len(defs))
 	store := NewStore(db)
 	service := &Service{
-		cfg:          cfg,
 		store:        store,
 		aiClient:     aiClient,
 		freeAIClient: freeAIClient,

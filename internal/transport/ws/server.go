@@ -15,7 +15,7 @@ import (
 	"strings"
 	"sync"
 
-	"njk_go/internal/imagestore"
+	"njk_go/internal/client/imagestore"
 	"njk_go/internal/napcat"
 	"njk_go/internal/service"
 )
