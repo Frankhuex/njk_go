@@ -4,7 +4,7 @@ import (
 	"log"
 	"njk_go/internal/client/ai"
 	"njk_go/internal/client/bbh"
-	"njk_go/internal/client/postgres"
+	"njk_go/internal/client/pgstore"
 	"njk_go/internal/config"
 	"njk_go/internal/service"
 	"njk_go/internal/transport/ws"
@@ -17,7 +17,7 @@ func main() {
 		return
 	}
 
-	db, err := postgres.InitDB(cfg.DSN())
+	store, err := pgstore.InitStore(cfg.DSN())
 	if err != nil {
 		log.Fatalf("数据库连接失败: %v", err)
 		return
@@ -25,7 +25,7 @@ func main() {
 
 	botService := service.NewService(
 		cfg,
-		db,
+		store,
 		ai.NewClient(cfg.BaseURL, cfg.APIKey, cfg.ModelName),
 		ai.NewClient(cfg.BaseURL, cfg.APIKey, cfg.FreeModelName),
 		bbh.NewClient(cfg.BBHBaseURL),

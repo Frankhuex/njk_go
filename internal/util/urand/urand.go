@@ -29,3 +29,7 @@ func SleepMillis(ctx context.Context, left int, right int) error {
 		return nil
 	}
 }
+
+func Float64() float64 {
+	return NewRandom().Float64()
+}

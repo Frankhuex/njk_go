@@ -2,18 +2,17 @@ package service
 
 import (
 	"context"
-	"math/rand"
 	"regexp"
 	"sync"
 	"time"
 
 	"njk_go/internal/client/bbh"
 	"njk_go/internal/client/imagestore"
+	"njk_go/internal/client/pgstore"
 	"njk_go/internal/config"
 	"njk_go/internal/napcat"
 	"njk_go/internal/util/unapcat"
-
-	"gorm.io/gorm"
+	"njk_go/internal/util/urand"
 )
 
 type AICompleter interface {
@@ -22,7 +21,7 @@ type AICompleter interface {
 
 type Service struct {
 	cfg          config.Config
-	store        *Store
+	store        *pgstore.Store
 	aiClient     AICompleter
 	freeAIClient AICompleter
 	bbhClient    *bbh.BBHClient
@@ -30,17 +29,15 @@ type Service struct {
 	imageStore   *imagestore.ImageStoreClient
 	commands     []compiledCommand
 	commandMap   map[commandKey]compiledCommand
-	rng          *rand.Rand
 	pending      *pendingQueue
 	lastAIMu     sync.Mutex
 	lastAI       map[string]time.Time
 }
 
-func NewService(cfg config.Config, db *gorm.DB, aiClient AICompleter, freeAIClient AICompleter, bbhClient *bbh.BBHClient) *Service {
+func NewService(cfg config.Config, store *pgstore.Store, aiClient AICompleter, freeAIClient AICompleter, bbhClient *bbh.BBHClient) *Service {
 	defs := commandDefs(cfg.BotUserID)
 	commands := make([]compiledCommand, 0, len(defs))
 	commandMap := make(map[commandKey]compiledCommand, len(defs))
-	store := NewStore(db)
 	service := &Service{
 		cfg:          cfg,
 		store:        store,
@@ -49,7 +46,6 @@ func NewService(cfg config.Config, db *gorm.DB, aiClient AICompleter, freeAIClie
 		bbhClient:    bbhClient,
 		imageService: NewImageService(store),
 		imageStore:   imagestore.NewClient(".", cfg.MyURL),
-		rng:          rand.New(rand.NewSource(time.Now().UnixNano())),
 		pending:      &pendingQueue{},
 		lastAI:       map[string]time.Time{},
 	}
@@ -90,7 +86,7 @@ func (s *Service) MentionsBot(message napcat.MessagePayload) bool {
 }
 
 func (s *Service) ShouldRandomReply() bool {
-	return s.rng.Float64() < 0.08
+	return urand.Float64() < 0.08
 }
 
 func (s *Service) CompleteActionResult(ctx context.Context, status string, retcode int, messageID string) error {

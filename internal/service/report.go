@@ -2,51 +2,13 @@ package service
 
 import (
 	"fmt"
-	"sort"
 	"strings"
-	"time"
 
+	"njk_go/internal/client/pgstore"
 	"njk_go/internal/util/utime"
 )
 
-func rankNightRows(rows []nightRow, limit int) []ReportNight {
-	type rankedNight struct {
-		row        nightRow
-		offsetTime time.Duration
-	}
-
-	ranked := make([]rankedNight, 0, len(rows))
-	for _, row := range rows {
-		offset := row.Time.Add(-5 * time.Hour)
-		offsetTime := time.Duration(offset.Hour())*time.Hour + time.Duration(offset.Minute())*time.Minute + time.Duration(offset.Second())*time.Second
-		ranked = append(ranked, rankedNight{row: row, offsetTime: offsetTime})
-	}
-
-	sort.Slice(ranked, func(i, j int) bool {
-		return ranked[i].offsetTime > ranked[j].offsetTime
-	})
-	if len(ranked) > limit {
-		ranked = ranked[:limit]
-	}
-
-	result := make([]ReportNight, 0, len(ranked))
-	for _, item := range ranked {
-		sender := item.row.Card
-		if sender == "" {
-			sender = item.row.Nickname
-		}
-		if sender == "" {
-			sender = "Unknown"
-		}
-		result = append(result, ReportNight{
-			FullTime: utime.FormatDisplayTime(item.row.Time),
-			Sender:   sender,
-		})
-	}
-	return result
-}
-
-func formatReport(stats *ReportStats, dayNum int, limit int) string {
+func formatReport(stats *pgstore.ReportStats, dayNum int, limit int) string {
 	if stats == nil || stats.MessageCount == 0 {
 		groupName := "未知群聊"
 		if stats != nil && stats.GroupName != "" {

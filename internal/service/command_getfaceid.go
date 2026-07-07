@@ -4,6 +4,8 @@ import (
 	"context"
 	"strconv"
 	"strings"
+
+	"njk_go/internal/client/pgstore"
 )
 
 func (s *Service) handleGetFaceIDCommand(ctx context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
@@ -26,7 +28,7 @@ func (s *Service) handleGetFaceIDCommand(ctx context.Context, groupID string, ma
 	return simpleOutbound(groupID, message), nil
 }
 
-func formatGetFaceIDRows(rows []GetFaceIDMessageRow) string {
+func formatGetFaceIDRows(rows []pgstore.GetFaceIDMessageRow) string {
 	lines := make([]string, 0, len(rows)*2)
 	for _, row := range rows {
 		if len(row.SegmentFaceIDs) > 0 {

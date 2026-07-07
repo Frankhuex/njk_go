@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"njk_go/internal/client/pgstore"
 	"njk_go/internal/napcat"
 	"njk_go/internal/util/urand"
 	"njk_go/internal/util/utext"
@@ -92,7 +93,7 @@ func (s *Service) GenerateNJKReply(ctx context.Context, event *napcat.GroupMessa
 		return nil, err
 	}
 	for i := 0; i < 5; i++ {
-		temperature := 0.8 + s.rng.Float64()*0.1
+		temperature := 0.8 + urand.Float64()*0.1
 		candidate, err := s.aiClient.Complete(ctx, systemPrompt, fmt.Sprintf("%v", history), &temperature)
 		if err != nil {
 			return nil, err
@@ -117,7 +118,7 @@ func (s *Service) historyStrings(ctx context.Context, groupID string, count int)
 	return formatStoredMessages(messages), nil
 }
 
-func formatStoredMessages(messages []StoredMessage) []string {
+func formatStoredMessages(messages []pgstore.StoredMessage) []string {
 	result := make([]string, 0, len(messages))
 	for _, item := range messages {
 		result = append(result, item.Format())

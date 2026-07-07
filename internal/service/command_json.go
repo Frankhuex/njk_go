@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+
+	"njk_go/internal/client/pgstore"
 )
 
 func (s *Service) handleJSONCommand(ctx context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
@@ -32,7 +34,7 @@ func (s *Service) handleJSONCommand(ctx context.Context, groupID string, match C
 	return simpleOutbound(groupID, message), nil
 }
 
-func formatRawJSONMessages(messages []StoredMessage) (string, error) {
+func formatRawJSONMessages(messages []pgstore.StoredMessage) (string, error) {
 	items := make([]json.RawMessage, 0, len(messages))
 	for _, message := range messages {
 		rawJSON := strings.TrimSpace(message.RawJSON)

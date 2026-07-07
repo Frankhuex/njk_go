@@ -1,14 +1,17 @@
-package service
+package pgstore
 
 import (
 	"context"
 	"fmt"
+	"log"
+	"sort"
 	"time"
 
 	"njk_go/internal/dal/model"
 	"njk_go/internal/util/uface"
 	"njk_go/internal/util/utime"
 
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -25,6 +28,15 @@ type GetFaceIDMessageRow struct {
 
 func NewStore(db *gorm.DB) *Store {
 	return &Store{db: db}
+}
+
+func InitStore(dsn string) (*Store, error) {
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Printf("数据库连接失败: %v", err)
+		return nil, err
+	}
+	return NewStore(db), nil
 }
 
 func (s *Store) UpsertUser(ctx context.Context, userID string, nickname string) error {
@@ -429,13 +441,6 @@ type StoredMessage struct {
 	RawJSON    string    `gorm:"column:raw_json"`
 }
 
-func nullableString(value string) *string {
-	if value == "" {
-		return nil
-	}
-	return &value
-}
-
 func (m StoredMessage) Format() string {
 	name := m.Card
 	if name == "" {
@@ -491,8 +496,52 @@ type nightRow struct {
 	Nickname string    `gorm:"column:nickname"`
 }
 
+func nullableString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
 func reverseStoredMessages(items []StoredMessage) {
 	for left, right := 0, len(items)-1; left < right; left, right = left+1, right-1 {
 		items[left], items[right] = items[right], items[left]
 	}
+}
+
+func rankNightRows(rows []nightRow, limit int) []ReportNight {
+	type rankedNight struct {
+		row        nightRow
+		offsetTime time.Duration
+	}
+
+	ranked := make([]rankedNight, 0, len(rows))
+	for _, row := range rows {
+		offset := row.Time.Add(-5 * time.Hour)
+		offsetTime := time.Duration(offset.Hour())*time.Hour + time.Duration(offset.Minute())*time.Minute + time.Duration(offset.Second())*time.Second
+		ranked = append(ranked, rankedNight{row: row, offsetTime: offsetTime})
+	}
+
+	sort.Slice(ranked, func(i, j int) bool {
+		return ranked[i].offsetTime > ranked[j].offsetTime
+	})
+	if len(ranked) > limit {
+		ranked = ranked[:limit]
+	}
+
+	result := make([]ReportNight, 0, len(ranked))
+	for _, item := range ranked {
+		sender := item.row.Card
+		if sender == "" {
+			sender = item.row.Nickname
+		}
+		if sender == "" {
+			sender = "Unknown"
+		}
+		result = append(result, ReportNight{
+			FullTime: utime.FormatDisplayTime(item.row.Time),
+			Sender:   sender,
+		})
+	}
+	return result
 }

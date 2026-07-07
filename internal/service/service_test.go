@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"math/rand"
 	"net"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"njk_go/internal/client/pgstore"
 	"njk_go/internal/config"
 	"njk_go/internal/dal/model"
 	"njk_go/internal/napcat"
@@ -36,16 +37,16 @@ func TestMatchCommandPrefersMoreSpecificPattern(t *testing.T) {
 }
 
 func TestFormatReportDropsTopicAndWordSections(t *testing.T) {
-	report := formatReport(&ReportStats{
+	report := formatReport(&pgstore.ReportStats{
 		GroupName:    "测试群",
 		MessageCount: 20,
-		TopChattedDates: []ReportDay{
+		TopChattedDates: []pgstore.ReportDay{
 			{Date: time.Date(2026, 4, 15, 0, 0, 0, 0, time.UTC), Count: 12},
 		},
-		LatestChatted: []ReportNight{
+		LatestChatted: []pgstore.ReportNight{
 			{FullTime: "2026-04-15 04:58:00", Sender: "你居垦"},
 		},
-		TopAttedUsers: []ReportAtUser{
+		TopAttedUsers: []pgstore.ReportAtUser{
 			{Nickname: "甲", UserID: "1", Count: 3},
 		},
 		StartDate: time.Date(2026, 4, 10, 5, 0, 0, 0, time.Local),
@@ -299,7 +300,7 @@ func TestImageAndFileOutboundSegmentTypes(t *testing.T) {
 }
 
 func TestFormatRawJSONMessagesPreservesJSONTypes(t *testing.T) {
-	result, err := formatRawJSONMessages([]StoredMessage{
+	result, err := formatRawJSONMessages([]pgstore.StoredMessage{
 		{RawJSON: `[{"type":"text","data":{"text":"hi"}}]`},
 		{RawJSON: `"bot reply"`},
 		{RawJSON: ``},
@@ -358,7 +359,6 @@ func TestHandleDiceCommandReturnsCommaSeparatedRolls(t *testing.T) {
 		BotNickname:     "你居垦",
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
-	service.rng = rand.New(rand.NewSource(1))
 
 	match := service.MatchCommand(".2d6")
 	if match == nil {
@@ -375,8 +375,25 @@ func TestHandleDiceCommandReturnsCommaSeparatedRolls(t *testing.T) {
 	if outbound.ShouldSave {
 		t.Fatal("dice command response should not be saved")
 	}
-	if outbound.Message != "6+4=10" {
+	parts := strings.Split(outbound.Message, "=")
+	if len(parts) != 2 {
 		t.Fatalf("unexpected dice output: %q", outbound.Message)
+	}
+	rolls := strings.Split(parts[0], "+")
+	if len(rolls) != 2 {
+		t.Fatalf("unexpected dice rolls: %q", outbound.Message)
+	}
+	left, err := strconv.Atoi(rolls[0])
+	if err != nil || left < 1 || left > 6 {
+		t.Fatalf("unexpected first roll: %q", outbound.Message)
+	}
+	right, err := strconv.Atoi(rolls[1])
+	if err != nil || right < 1 || right > 6 {
+		t.Fatalf("unexpected second roll: %q", outbound.Message)
+	}
+	total, err := strconv.Atoi(parts[1])
+	if err != nil || total != left+right {
+		t.Fatalf("unexpected dice total: %q", outbound.Message)
 	}
 }
 
@@ -459,7 +476,7 @@ func TestSortFaceIDsNumericOrder(t *testing.T) {
 }
 
 func TestFormatGetFaceIDRowsGroupsBySource(t *testing.T) {
-	rows := []GetFaceIDMessageRow{
+	rows := []pgstore.GetFaceIDMessageRow{
 		{
 			MessageID:        "1003",
 			SegmentFaceIDs:   []string{"1", "2", "10"},

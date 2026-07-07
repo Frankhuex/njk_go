@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"njk_go/internal/client/pgstore"
+
 	"github.com/corona10/goimagehash"
 	_ "golang.org/x/image/webp"
 )
@@ -22,11 +24,11 @@ import (
 const duplicateImageThreshold = 5
 
 type ImageService struct {
-	store      *Store
+	store      *pgstore.Store
 	httpClient *http.Client
 }
 
-func NewImageService(store *Store) *ImageService {
+func NewImageService(store *pgstore.Store) *ImageService {
 	return &ImageService{
 		store: store,
 		httpClient: &http.Client{
@@ -68,7 +70,7 @@ func (s *ImageService) SaveAndCheckDuplicate(ctx context.Context, groupID string
 		return nil, err
 	}
 
-	var duplicates []StoredImage
+	var duplicates []pgstore.StoredImage
 	for _, candidate := range candidates {
 		source, err := decodeHash(candidate.ImageHash)
 		if err != nil {
