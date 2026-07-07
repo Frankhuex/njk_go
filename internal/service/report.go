@@ -21,7 +21,7 @@ func formatReport(stats *pgstore.ReportStats, dayNum int, limit int) string {
 		fmt.Sprintf("📊 【%s】全方位数据报告", stats.GroupName),
 		fmt.Sprintf("⏳ 统计时段：%s 至 %s", stats.StartDate.Format("2006-01-02 15:04"), stats.EndDate.Format("2006-01-02 15:04")),
 		strings.Repeat("-", 30),
-		fmt.Sprintf("📈 概况：总计消息(%d条)，日均(%.2f条)", stats.MessageCount, averageDaily(stats.MessageCount, dayNum)),
+		fmt.Sprintf("📈 概况：总计消息(%d条)，日均(%.2f条)", stats.MessageCount, float64(stats.MessageCount)/float64(dayNum)),
 		"",
 	}
 
@@ -60,11 +60,4 @@ func formatReport(stats *pgstore.ReportStats, dayNum int, limit int) string {
 
 	lines = append(lines, strings.Repeat("-", 30), "💡 自动统计报告生成完毕")
 	return strings.Join(lines, "\n")
-}
-
-func averageDaily(total int64, dayNum int) float64 {
-	if dayNum <= 0 {
-		return 0
-	}
-	return float64(total) / float64(dayNum)
 }

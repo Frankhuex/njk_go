@@ -145,8 +145,3 @@ func (s *Service) saveSelfMessage(ctx context.Context, pending *pendingMessage, 
 		RawMessage: &text,
 	})
 }
-
-func isEmojiImage(segment napcat.MessageSegment) bool {
-	data := segment.Data
-	return data.EmojiID != "" || data.EmojiPackageID != 0 || data.Key != "" || data.SubType == 1 || strings.Contains(data.Summary, "动画表情")
-}

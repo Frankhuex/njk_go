@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"njk_go/internal/client/pgstore"
+	"njk_go/internal/napcat"
 
 	"github.com/corona10/goimagehash"
 	_ "golang.org/x/image/webp"
@@ -183,4 +184,9 @@ type DuplicateImage struct {
 	MessageID  string
 	SenderName string
 	SentAt     time.Time
+}
+
+func isEmojiImage(segment napcat.MessageSegment) bool {
+	data := segment.Data
+	return data.EmojiID != "" || data.EmojiPackageID != 0 || data.Key != "" || data.SubType == 1 || strings.Contains(data.Summary, "动画表情")
 }
