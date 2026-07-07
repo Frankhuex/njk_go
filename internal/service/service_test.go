@@ -13,6 +13,9 @@ import (
 	"njk_go/internal/config"
 	"njk_go/internal/dal/model"
 	"njk_go/internal/napcat"
+	"njk_go/internal/util/uface"
+	"njk_go/internal/util/unapcat"
+	"njk_go/internal/util/utext"
 )
 
 func TestMatchCommandPrefersMoreSpecificPattern(t *testing.T) {
@@ -408,7 +411,7 @@ func TestExtractFaceIDsFromRawJSON(t *testing.T) {
 		t.Fatalf("marshal raw json: %v", err)
 	}
 
-	faceIDs, err := extractFaceIDsFromRawJSON(string(rawJSONBytes))
+	faceIDs, err := uface.ExtractFaceIDsFromRawJSON(string(rawJSONBytes))
 	if err != nil {
 		t.Fatalf("extract face ids: %v", err)
 	}
@@ -421,7 +424,7 @@ func TestExtractFaceIDsFromRawJSON(t *testing.T) {
 }
 
 func TestFaceIDsFromSegmentsDeduplicatesAndSkipsBlank(t *testing.T) {
-	faceIDs := faceIDsFromSegments([]napcat.MessageSegment{
+	faceIDs := uface.FaceIDsFromSegments([]napcat.MessageSegment{
 		napcat.NewTextSegment("hi"),
 		napcat.NewFaceSegment("123"),
 		napcat.NewFaceSegment("123"),
@@ -434,7 +437,7 @@ func TestFaceIDsFromSegmentsDeduplicatesAndSkipsBlank(t *testing.T) {
 }
 
 func TestEmojiLikeFaceIDsUsesLikes(t *testing.T) {
-	faceIDs := emojiLikeFaceIDs([]napcat.EmojiLike{
+	faceIDs := uface.EmojiLikeFaceIDs([]napcat.EmojiLike{
 		{EmojiID: "66"},
 		{EmojiID: "77"},
 		{EmojiID: "66"},
@@ -447,7 +450,7 @@ func TestEmojiLikeFaceIDsUsesLikes(t *testing.T) {
 
 func TestSortFaceIDsNumericOrder(t *testing.T) {
 	faceIDs := []string{"10", "2", "1", "abc", "20"}
-	sortFaceIDs(faceIDs)
+	uface.SortFaceIDs(faceIDs)
 	want := []string{"1", "2", "10", "20", "abc"}
 	if strings.Join(faceIDs, ",") != strings.Join(want, ",") {
 		t.Fatalf("unexpected sorted face ids: %#v", faceIDs)
@@ -589,7 +592,7 @@ func TestExtractFaceIDsFromRawJSONRejectsNonSegmentJSON(t *testing.T) {
 		t.Fatalf("marshal raw json: %v", err)
 	}
 
-	_, err = extractFaceIDsFromRawJSON(string(rawJSONBytes))
+	_, err = uface.ExtractFaceIDsFromRawJSON(string(rawJSONBytes))
 	if err == nil {
 		t.Fatal("expected non-segment json to fail")
 	}
@@ -601,13 +604,13 @@ func TestMentionsBotDetectsAtSegment(t *testing.T) {
 		napcat.NewTextSegment(" 在吗"),
 	)
 
-	if !mentionsBot(payload, "1558109748") {
+	if !unapcat.MentionsUser(payload, "1558109748") {
 		t.Fatal("expected at segment to mention bot")
 	}
 }
 
 func TestNormalizeOutboundTextConvertsEscapedNewlines(t *testing.T) {
-	text := normalizeOutboundText("第一行\\n第二行\\n第三行")
+	text := utext.NormalizeOutboundText("第一行\\n第二行\\n第三行")
 	if strings.Contains(text, `\n`) {
 		t.Fatal("expected escaped newline to be converted")
 	}

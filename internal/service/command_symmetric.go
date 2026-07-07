@@ -7,16 +7,13 @@ import (
 	"image"
 	"image/color"
 	"image/gif"
-	"log"
 	"net/http"
-	"net/url"
-	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 
 	"njk_go/internal/dal/model"
+	"njk_go/internal/util/uimage"
 )
 
 type imageKind int
@@ -160,7 +157,7 @@ func (s *Service) makeSymmetricImage(ctx context.Context, mode symmetryMode, ite
 }
 
 func detectImageKind(sourceURL string, data []byte) imageKind {
-	ext := normalizedImageExt(sourceURL)
+	ext := uimage.NormalizedExt(sourceURL)
 	switch ext {
 	case ".gif":
 		return imageKindGIF
@@ -183,16 +180,6 @@ func detectImageKind(sourceURL string, data []byte) imageKind {
 		return imageKindStatic
 	}
 	return imageKindUnknown
-}
-
-func normalizedImageExt(sourceURL string) string {
-	parsed, err := url.Parse(sourceURL)
-	if err == nil && parsed.Path != "" {
-		return strings.ToLower(path.Ext(parsed.Path))
-	}
-	ext := strings.ToLower(filepath.Ext(sourceURL))
-	log.Printf("【检测图片类型】url=%s ext=%s", sourceURL, ext)
-	return ext
 }
 
 func symmetricFileBase(messageID string, imageID int32) string {

@@ -10,6 +10,8 @@ import (
 
 	"njk_go/internal/dal/model"
 	"njk_go/internal/napcat"
+	"njk_go/internal/util/ucodec"
+	"njk_go/internal/util/uptr"
 )
 
 func (s *Service) saveIncomingMessageAndCheckImages(ctx context.Context, event *napcat.GroupMessageEvent) ([]DuplicateImage, error) {
@@ -59,7 +61,7 @@ func (s *Service) saveIncomingMessageAndCheckImages(ctx context.Context, event *
 				imageURLs = append(imageURLs, segment.Data.URL)
 			}
 		default:
-			keyValStr, err := StructToKeyValue(segment.Data)
+			keyValStr, err := ucodec.StructToKeyValue(segment.Data)
 			if err == nil {
 				textParts = append(textParts, fmt.Sprintf("[CQ:%s,%s]", segment.Type, keyValStr))
 			}
@@ -76,10 +78,10 @@ func (s *Service) saveIncomingMessageAndCheckImages(ctx context.Context, event *
 	log.Printf("【处理后消息文本】%s", messageText)
 	senderIDCopy := senderID
 	groupIDCopy := groupID
-	card := emptyToNil(event.Sender.Card)
-	text := emptyToNil(messageText)
+	card := uptr.EmptyToNil(event.Sender.Card)
+	text := uptr.EmptyToNil(messageText)
 	rawJSONString := string(rawJSON)
-	rawMessage := emptyToNil(event.RawMessage)
+	rawMessage := uptr.EmptyToNil(event.RawMessage)
 
 	message := &model.Message{
 		MessageID:  messageID,
@@ -148,21 +150,4 @@ func (s *Service) saveSelfMessage(ctx context.Context, pending *pendingMessage, 
 func isEmojiImage(segment napcat.MessageSegment) bool {
 	data := segment.Data
 	return data.EmojiID != "" || data.EmojiPackageID != 0 || data.Key != "" || data.SubType == 1 || strings.Contains(data.Summary, "动画表情")
-}
-
-func mentionsBot(message napcat.MessagePayload, botUserID string) bool {
-	for _, segment := range message.Segments {
-		if segment.Type == "at" && strings.TrimSpace(segment.Data.QQ) == botUserID {
-			return true
-		}
-	}
-	return false
-}
-
-func emptyToNil(value string) *string {
-	if value == "" {
-		return nil
-	}
-	copyValue := value
-	return &copyValue
 }

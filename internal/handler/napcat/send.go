@@ -1,21 +1,15 @@
 package napcathandler
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"image/gif"
 	"log"
-	"net/http"
-	"net/url"
-	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
 	napcatproto "njk_go/internal/napcat"
-	svc "njk_go/internal/service"
+	"njk_go/internal/util/uimage"
+	"njk_go/internal/util/urand"
 )
 
 func (h *Handler) multiSendGroupImages(ctx context.Context, conn outboundWriter, groupID string, imgURLs []string, segmentType napcatproto.SegmentType) error {
@@ -82,7 +76,7 @@ func (h *Handler) multiSendSegments(ctx context.Context, conn outboundWriter, gr
 }
 
 func (h *Handler) setMsgEmojiLike(ctx context.Context, conn outboundWriter, messageID string, emojiID string) error {
-	if err := svc.SleepRandomMillis(ctx, h.service.Random(), 1000, 2000); err != nil {
+	if err := urand.SleepMillis(ctx, h.service.Random(), 1000, 2000); err != nil {
 		return err
 	}
 
@@ -108,53 +102,7 @@ func (h *Handler) fileSegmentName(ctx context.Context, index int, sourceURL stri
 	data, err := h.service.DownloadImage(ctx, sourceURL)
 	if err != nil {
 		log.Printf("【识别文件类型失败】url=%s err=%v", sourceURL, err)
-		return fallbackFileSegmentName(index, sourceURL)
+		return uimage.FallbackFileSegmentName(index, sourceURL)
 	}
-	return fileSegmentNameFromImageData(index, sourceURL, data)
-}
-
-func fileSegmentNameFromImageData(index int, sourceURL string, data []byte) string {
-	ext := fallbackImageExt(sourceURL, data)
-	if _, err := gif.DecodeAll(bytes.NewReader(data)); err == nil {
-		ext = ".gif"
-	}
-	return fmt.Sprintf("image_%d%s", index+1, ext)
-}
-
-func fallbackFileSegmentName(index int, sourceURL string) string {
-	ext := normalizedImageExt(sourceURL)
-	if ext == "" {
-		ext = ".png"
-	}
-	return fmt.Sprintf("image_%d%s", index+1, ext)
-}
-
-func fallbackImageExt(sourceURL string, data []byte) string {
-	contentType := strings.ToLower(http.DetectContentType(data))
-	switch {
-	case strings.Contains(contentType, "image/jpeg"), strings.Contains(contentType, "image/jpg"):
-		return ".jpg"
-	case strings.Contains(contentType, "image/png"):
-		return ".png"
-	}
-	if ext := normalizedImageExt(sourceURL); ext != "" {
-		return ext
-	}
-	return ".png"
-}
-
-func normalizeOutboundText(text string) string {
-	text = strings.ReplaceAll(text, "\r\n", "\n")
-	text = strings.ReplaceAll(text, `\r\n`, "\n")
-	text = strings.ReplaceAll(text, `\n`, "\n")
-	text = strings.ReplaceAll(text, `\t`, "\t")
-	return text
-}
-
-func normalizedImageExt(sourceURL string) string {
-	parsed, err := url.Parse(sourceURL)
-	if err == nil && parsed.Path != "" {
-		return strings.ToLower(path.Ext(parsed.Path))
-	}
-	return strings.ToLower(filepath.Ext(sourceURL))
+	return uimage.FileSegmentNameFromData(index, sourceURL, data)
 }

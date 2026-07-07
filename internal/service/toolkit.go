@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"njk_go/internal/napcat"
+	"njk_go/internal/util/unapcat"
 )
 
 func (s *Service) IsGroupAllowed(groupID string) bool {
@@ -20,7 +21,7 @@ func (s *Service) IsUserBanned(userID string) bool {
 }
 
 func (s *Service) MentionsBot(message napcat.MessagePayload) bool {
-	return mentionsBot(message, s.cfg.BotUserID)
+	return unapcat.MentionsUser(message, s.cfg.BotUserID)
 }
 
 func (s *Service) MatchCommand(rawMessage string) *CommandMatch {
@@ -70,4 +71,3 @@ func (s *Service) CompleteActionResult(ctx context.Context, status string, retco
 
 	return s.saveSelfMessage(ctx, pending, messageID)
 }
-

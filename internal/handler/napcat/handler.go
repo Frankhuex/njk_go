@@ -9,6 +9,7 @@ import (
 
 	"njk_go/internal/napcat"
 	"njk_go/internal/service"
+	"njk_go/internal/util/utext"
 )
 
 type outboundWriter interface {
@@ -150,7 +151,7 @@ func (h *Handler) executeActions(ctx context.Context, conn outboundWriter, clien
 }
 
 func (h *Handler) sendGroupText(ctx context.Context, conn outboundWriter, groupID string, message string, shouldSave bool) error {
-	message = normalizeOutboundText(message)
+	message = utext.NormalizeOutboundText(message)
 	req := napcat.SendGroupMsgRequest{
 		Action: "send_group_msg",
 		Params: napcat.SendGroupMsgParams{

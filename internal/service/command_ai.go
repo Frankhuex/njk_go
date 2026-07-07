@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"njk_go/internal/napcat"
+	"njk_go/internal/util/urand"
 )
 
 func (s *Service) handleAIPromptCommand(ctx context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
@@ -74,7 +75,7 @@ func (s *Service) handleReportCommand(ctx context.Context, groupID string, match
 }
 
 func (s *Service) handleNJKReply(ctx context.Context, event *napcat.GroupMessageEvent, groupID string) (*pendingOutbound, error) {
-	history, err := s.historyStrings(ctx, groupID, randomRange(s.rng, 10, 30))
+	history, err := s.historyStrings(ctx, groupID, urand.Range(s.rng, 10, 30))
 	if err != nil {
 		return nil, err
 	}

@@ -2,10 +2,9 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"strconv"
 
-	"njk_go/internal/napcat"
+	"njk_go/internal/util/uface"
 )
 
 func (s *Service) handleFaceCommand(ctx context.Context, groupID string, messageID string, match CommandMatch) (*pendingOutbound, error) {
@@ -20,7 +19,7 @@ func (s *Service) handleFaceCommand(ctx context.Context, groupID string, message
 
 	emojiIDs := make([]string, 0)
 	for _, item := range history {
-		faceIDs, err := extractFaceIDsFromRawJSON(item.RawJSON)
+		faceIDs, err := uface.ExtractFaceIDsFromRawJSON(item.RawJSON)
 		if err != nil {
 			continue
 		}
@@ -35,17 +34,4 @@ func (s *Service) handleFaceCommand(ctx context.Context, groupID string, message
 		EmojiLikeMessageID: messageID,
 		EmojiLikeIDs:       emojiIDs,
 	}, nil
-}
-
-func extractFaceIDsFromRawJSON(rawJSON string) ([]string, error) {
-	if rawJSON == "" {
-		return nil, nil
-	}
-
-	var segments []napcat.MessageSegment
-	if err := json.Unmarshal([]byte(rawJSON), &segments); err != nil {
-		return nil, err
-	}
-
-	return faceIDsFromSegments(segments), nil
 }
