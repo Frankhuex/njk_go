@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"njk_go/internal/util/utime"
 )
 
 func rankNightRows(rows []nightRow, limit int) []ReportNight {
@@ -37,7 +39,7 @@ func rankNightRows(rows []nightRow, limit int) []ReportNight {
 			sender = "Unknown"
 		}
 		result = append(result, ReportNight{
-			FullTime: formatDisplayTime(item.row.Time),
+			FullTime: utime.FormatDisplayTime(item.row.Time),
 			Sender:   sender,
 		})
 	}
@@ -64,7 +66,7 @@ func formatReport(stats *ReportStats, dayNum int, limit int) string {
 	if len(stats.TopChattedDates) > 0 {
 		lines = append(lines, "🔥 【最活跃的日期】")
 		for i, item := range stats.TopChattedDates {
-			lines = append(lines, fmt.Sprintf(" %d. %s (%d条)", i+1, formatDisplayDate(item.Date), item.Count))
+			lines = append(lines, fmt.Sprintf(" %d. %s (%d条)", i+1, utime.FormatDisplayDate(item.Date), item.Count))
 		}
 		lines = append(lines, "")
 	}

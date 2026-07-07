@@ -1,4 +1,4 @@
-package ucodec
+package uconvert
 
 import (
 	"encoding/json"
@@ -6,6 +6,14 @@ import (
 	"sort"
 	"strings"
 )
+
+func EmptyToNil(value string) *string {
+	if value == "" {
+		return nil
+	}
+	copyValue := value
+	return &copyValue
+}
 
 func StructToKeyValue(v interface{}) (string, error) {
 	data, err := json.Marshal(v)
@@ -38,4 +46,3 @@ func StructToKeyValue(v interface{}) (string, error) {
 
 	return strings.Join(pairs, ","), nil
 }
-

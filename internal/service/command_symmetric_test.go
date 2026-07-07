@@ -16,7 +16,7 @@ func TestMatchCommandSupportsSymmetricWithoutSpace(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	match := service.matchCommand(".对称左5")
+	match := service.MatchCommand(".对称左5")
 	if match == nil || match.Command.Key != commandSymmetricLeft {
 		t.Fatalf("expected .对称左5 to match symmetric command, got=%v", match)
 	}
@@ -24,7 +24,7 @@ func TestMatchCommandSupportsSymmetricWithoutSpace(t *testing.T) {
 		t.Fatalf("unexpected groups: %#v", match.Groups)
 	}
 
-	match = service.matchCommand(".对称右下8")
+	match = service.MatchCommand(".对称右下8")
 	if match == nil || match.Command.Key != commandSymmetricRightDown {
 		t.Fatalf("expected .对称右下8 to match symmetric command, got=%v", match)
 	}

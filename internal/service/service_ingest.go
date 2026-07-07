@@ -10,11 +10,10 @@ import (
 
 	"njk_go/internal/dal/model"
 	"njk_go/internal/napcat"
-	"njk_go/internal/util/ucodec"
-	"njk_go/internal/util/uptr"
+	"njk_go/internal/util/uconvert"
 )
 
-func (s *Service) saveIncomingMessageAndCheckImages(ctx context.Context, event *napcat.GroupMessageEvent) ([]DuplicateImage, error) {
+func (s *Service) SaveIncomingMessageAndCheckImages(ctx context.Context, event *napcat.GroupMessageEvent) ([]DuplicateImage, error) {
 	senderID := event.Sender.UserID.String()
 	groupID := event.GroupID.String()
 	if err := s.store.UpsertUser(ctx, senderID, event.Sender.Nickname); err != nil {
@@ -61,7 +60,7 @@ func (s *Service) saveIncomingMessageAndCheckImages(ctx context.Context, event *
 				imageURLs = append(imageURLs, segment.Data.URL)
 			}
 		default:
-			keyValStr, err := ucodec.StructToKeyValue(segment.Data)
+			keyValStr, err := uconvert.StructToKeyValue(segment.Data)
 			if err == nil {
 				textParts = append(textParts, fmt.Sprintf("[CQ:%s,%s]", segment.Type, keyValStr))
 			}
@@ -78,10 +77,10 @@ func (s *Service) saveIncomingMessageAndCheckImages(ctx context.Context, event *
 	log.Printf("【处理后消息文本】%s", messageText)
 	senderIDCopy := senderID
 	groupIDCopy := groupID
-	card := uptr.EmptyToNil(event.Sender.Card)
-	text := uptr.EmptyToNil(messageText)
+	card := uconvert.EmptyToNil(event.Sender.Card)
+	text := uconvert.EmptyToNil(messageText)
 	rawJSONString := string(rawJSON)
-	rawMessage := uptr.EmptyToNil(event.RawMessage)
+	rawMessage := uconvert.EmptyToNil(event.RawMessage)
 
 	message := &model.Message{
 		MessageID:  messageID,

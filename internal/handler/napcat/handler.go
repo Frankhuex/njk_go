@@ -10,6 +10,7 @@ import (
 	"njk_go/internal/napcat"
 	"njk_go/internal/service"
 	"njk_go/internal/util/utext"
+	"njk_go/internal/util/utime"
 )
 
 type outboundWriter interface {
@@ -80,7 +81,7 @@ func (h *Handler) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 			log.Printf("【消息落库失败】%s - %v", clientAddr, err)
 		}
 		for _, duplicate := range duplicates {
-			text := fmt.Sprintf("[CQ:reply,id=%s]🇫🇷%d遍了。%s在%s就🇫🇷了。", duplicate.MessageID, duplicate.Count, duplicate.SenderName, duplicate.SentAt.Format("2006-01-02 15:04:05"))
+			text := fmt.Sprintf("[CQ:reply,id=%s]🇫🇷%d遍了。%s在%s就🇫🇷了。", duplicate.MessageID, duplicate.Count, duplicate.SenderName, utime.FormatDisplayTime(duplicate.SentAt))
 			actions = append(actions, service.OutboundAction{
 				GroupID:    groupID,
 				Message:    text,

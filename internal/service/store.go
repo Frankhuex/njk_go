@@ -7,6 +7,7 @@ import (
 
 	"njk_go/internal/dal/model"
 	"njk_go/internal/util/uface"
+	"njk_go/internal/util/utime"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -443,7 +444,7 @@ func (m StoredMessage) Format() string {
 	if name == "" {
 		name = "Unknown User"
 	}
-	return fmt.Sprintf("[%s,消息%s] %s (qq号%s): %s", formatDisplayTime(m.Time), m.MessageID, name, m.SenderID, m.Text)
+	return fmt.Sprintf("[%s,消息%s] %s (qq号%s): %s", utime.FormatDisplayTime(m.Time), m.MessageID, name, m.SenderID, m.Text)
 }
 
 type StoredImage struct {

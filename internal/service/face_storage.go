@@ -9,7 +9,7 @@ import (
 	"njk_go/internal/util/uface"
 )
 
-func (s *Service) saveFacesFromGroupMessage(ctx context.Context, event *napcat.GroupMessageEvent) {
+func (s *Service) SaveFacesFromGroupMessage(ctx context.Context, event *napcat.GroupMessageEvent) {
 	if s == nil || s.store == nil || s.store.db == nil || event == nil {
 		return
 	}
@@ -21,7 +21,7 @@ func (s *Service) saveFacesFromGroupMessage(ctx context.Context, event *napcat.G
 	}
 }
 
-func (s *Service) handleGroupMsgEmojiLikeNotice(ctx context.Context, event *napcat.NoticeEvent) {
+func (s *Service) HandleGroupMsgEmojiLikeNotice(ctx context.Context, event *napcat.NoticeEvent) {
 	if s == nil || s.store == nil || s.store.db == nil || event == nil {
 		return
 	}

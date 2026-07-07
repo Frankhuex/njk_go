@@ -16,6 +16,7 @@ import (
 	"njk_go/internal/util/uface"
 	"njk_go/internal/util/unapcat"
 	"njk_go/internal/util/utext"
+	"njk_go/internal/util/utime"
 )
 
 func TestMatchCommandPrefersMoreSpecificPattern(t *testing.T) {
@@ -25,7 +26,7 @@ func TestMatchCommandPrefersMoreSpecificPattern(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	match := service.matchCommand(".bbh 36 add 第一章\n内容")
+	match := service.MatchCommand(".bbh 36 add 第一章\n内容")
 	if match == nil {
 		t.Fatal("expected pattern to match")
 	}
@@ -72,7 +73,7 @@ func TestMatchCommandSupportsDotAIC(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	match := service.matchCommand(".aic")
+	match := service.MatchCommand(".aic")
 	if match == nil || match.Command.Key != commandAIC {
 		t.Fatalf("expected .aic to match aic command, got=%v", match)
 	}
@@ -85,7 +86,7 @@ func TestMatchCommandSupportsFaceWithoutSpace(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	match := service.matchCommand(".face12")
+	match := service.MatchCommand(".face12")
 	if match == nil || match.Command.Key != commandFace {
 		t.Fatalf("expected .face12 to match face command, got=%v", match)
 	}
@@ -102,7 +103,7 @@ func TestMatchCommandSupportsFaceIDSingle(t *testing.T) {
 	}, nil, nil, nil, nil)
 
 	for _, input := range []string{".faceid12", ".faceid 12"} {
-		match := service.matchCommand(input)
+		match := service.MatchCommand(input)
 		if match == nil || match.Command.Key != commandFaceID {
 			t.Fatalf("expected %q to match faceid command, got=%v", input, match)
 		}
@@ -119,7 +120,7 @@ func TestMatchCommandSupportsFaceIDRange(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	match := service.matchCommand(".faceid 12-15")
+	match := service.MatchCommand(".faceid 12-15")
 	if match == nil || match.Command.Key != commandFaceID {
 		t.Fatalf("expected .faceid 12-15 to match faceid command, got=%v", match)
 	}
@@ -136,7 +137,7 @@ func TestMatchCommandRejectsInvalidFaceID(t *testing.T) {
 	}, nil, nil, nil, nil)
 
 	for _, input := range []string{".faceid abc", ".faceid 12-a", ".faceid"} {
-		if match := service.matchCommand(input); match != nil {
+		if match := service.MatchCommand(input); match != nil {
 			t.Fatalf("expected invalid faceid command %q not to match, got=%v", input, match)
 		}
 	}
@@ -150,7 +151,7 @@ func TestMatchCommandSupportsGetFaceIDWithOptionalSpace(t *testing.T) {
 	}, nil, nil, nil, nil)
 
 	for _, input := range []string{".getfaceid12", ".getfaceid 12"} {
-		match := service.matchCommand(input)
+		match := service.MatchCommand(input)
 		if match == nil || match.Command.Key != commandGetFaceID {
 			t.Fatalf("expected %q to match getfaceid command, got=%v", input, match)
 		}
@@ -168,7 +169,7 @@ func TestMatchCommandRejectsInvalidGetFaceID(t *testing.T) {
 	}, nil, nil, nil, nil)
 
 	for _, input := range []string{".getfaceid abc", ".getfaceid"} {
-		if match := service.matchCommand(input); match != nil {
+		if match := service.MatchCommand(input); match != nil {
 			t.Fatalf("expected invalid getfaceid command %q not to match, got=%v", input, match)
 		}
 	}
@@ -181,7 +182,7 @@ func TestMatchCommandSupportsAllFace(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	match := service.matchCommand(".allface")
+	match := service.MatchCommand(".allface")
 	if match == nil || match.Command.Key != commandAllFace {
 		t.Fatalf("expected .allface to match allface command, got=%v", match)
 	}
@@ -194,7 +195,7 @@ func TestMatchCommandRejectsAllFaceWithArg(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	if match := service.matchCommand(".allface 1"); match != nil {
+	if match := service.MatchCommand(".allface 1"); match != nil {
 		t.Fatalf("expected .allface with arg not to match, got=%v", match)
 	}
 }
@@ -207,7 +208,7 @@ func TestMatchCommandSupportsJSONWithOptionalSpace(t *testing.T) {
 	}, nil, nil, nil, nil)
 
 	for _, input := range []string{".json12", ".json 12"} {
-		match := service.matchCommand(input)
+		match := service.MatchCommand(input)
 		if match == nil || match.Command.Key != commandJSON {
 			t.Fatalf("expected %q to match json command, got=%v", input, match)
 		}
@@ -224,7 +225,7 @@ func TestMatchCommandRejectsInvalidJSONCount(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	if match := service.matchCommand(".json abc"); match != nil {
+	if match := service.MatchCommand(".json abc"); match != nil {
 		t.Fatalf("expected invalid json command not to match, got=%v", match)
 	}
 }
@@ -237,7 +238,7 @@ func TestMatchCommandSupportsFileWithOptionalSpace(t *testing.T) {
 	}, nil, nil, nil, nil)
 
 	for _, input := range []string{".file12", ".file 12"} {
-		match := service.matchCommand(input)
+		match := service.MatchCommand(input)
 		if match == nil || match.Command.Key != commandFile {
 			t.Fatalf("expected %q to match file command, got=%v", input, match)
 		}
@@ -254,7 +255,7 @@ func TestMatchCommandRejectsInvalidFileCount(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	if match := service.matchCommand(".file abc"); match != nil {
+	if match := service.MatchCommand(".file abc"); match != nil {
 		t.Fatalf("expected invalid file command not to match, got=%v", match)
 	}
 }
@@ -342,7 +343,7 @@ func TestMatchCommandSupportsDiceWithOptionalInnerSpaces(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	match := service.matchCommand(".2 d 6")
+	match := service.MatchCommand(".2 d 6")
 	if match == nil || match.Command.Key != commandDice {
 		t.Fatalf("expected .2 d 6 to match dice command, got=%v", match)
 	}
@@ -359,7 +360,7 @@ func TestHandleDiceCommandReturnsCommaSeparatedRolls(t *testing.T) {
 	}, nil, nil, nil, nil)
 	service.rng = rand.New(rand.NewSource(1))
 
-	match := service.matchCommand(".2d6")
+	match := service.MatchCommand(".2d6")
 	if match == nil {
 		t.Fatal("expected dice command to match")
 	}
@@ -386,7 +387,7 @@ func TestHandleDiceCommandRejectsCountOverTwenty(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	match := service.matchCommand(".21d6")
+	match := service.MatchCommand(".21d6")
 	if match == nil {
 		t.Fatal("expected dice command to match")
 	}
@@ -503,7 +504,7 @@ func TestHandleFaceIDCommandBuildsSingleFaceSegment(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	match := service.matchCommand(".faceid 12")
+	match := service.MatchCommand(".faceid 12")
 	if match == nil {
 		t.Fatal("expected faceid command to match")
 	}
@@ -526,7 +527,7 @@ func TestHandleFaceIDCommandBuildsRangeFaceSegments(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	match := service.matchCommand(".faceid 12-14")
+	match := service.MatchCommand(".faceid 12-14")
 	if match == nil {
 		t.Fatal("expected faceid command to match")
 	}
@@ -552,7 +553,7 @@ func TestHandleFaceIDCommandRejectsInvalidRange(t *testing.T) {
 	}, nil, nil, nil, nil)
 
 	for _, input := range []string{".faceid 0", ".faceid 3-1"} {
-		match := service.matchCommand(input)
+		match := service.MatchCommand(input)
 		if match == nil {
 			t.Fatalf("expected %q to match before handler validation", input)
 		}
@@ -573,7 +574,7 @@ func TestHandleFaceIDCommandRejectsLargeRange(t *testing.T) {
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
 
-	match := service.matchCommand(".faceid 1-51")
+	match := service.MatchCommand(".faceid 1-51")
 	if match == nil {
 		t.Fatal("expected faceid command to match")
 	}
@@ -621,7 +622,7 @@ func TestNormalizeOutboundTextConvertsEscapedNewlines(t *testing.T) {
 
 func TestFormatDisplayTimeDoesNotShiftClock(t *testing.T) {
 	input := time.Date(2026, 4, 16, 10, 30, 45, 0, time.FixedZone("CST", 8*3600))
-	if got := formatDisplayTime(input); got != "2026-04-16 10:30:45" {
+	if got := utime.FormatDisplayTime(input); got != "2026-04-16 10:30:45" {
 		t.Fatalf("unexpected formatted time: %s", got)
 	}
 }

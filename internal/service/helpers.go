@@ -3,8 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"math/rand"
-	"time"
 
 	"njk_go/internal/napcat"
 )
@@ -45,31 +43,9 @@ func savedReplyOutbound(groupID string, replyMessageID string, message string) *
 	}
 }
 
-func containsExact(items []string, target string) bool {
-	for _, item := range items {
-		if item == target {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *Service) Random() *rand.Rand {
-	if s == nil {
-		return rand.New(rand.NewSource(time.Now().UnixNano()))
-	}
-	return s.rng
-}
-
 func (s *Service) DownloadImage(ctx context.Context, sourceURL string) ([]byte, error) {
 	if s == nil || s.imageService == nil {
 		return nil, fmt.Errorf("image service not available")
 	}
 	return s.imageService.download(ctx, sourceURL)
-}
-
-func startOfReport(dayNum int) time.Time {
-	now := time.Now()
-	todayFive := time.Date(now.Year(), now.Month(), now.Day(), 5, 0, 0, 0, now.Location())
-	return todayFive.AddDate(0, 0, -dayNum)
 }

@@ -7,7 +7,7 @@ import (
 	"njk_go/internal/napcat"
 )
 
-func (s *Service) matchCommand(rawMessage string) *CommandMatch {
+func (s *Service) MatchCommand(rawMessage string) *CommandMatch {
 	for i := len(s.commands) - 1; i >= 0; i-- {
 		groups := s.commands[i].Pattern.FindStringSubmatch(rawMessage)
 		if groups != nil {
@@ -31,11 +31,22 @@ func (s *Service) commandByKey(key commandKey) *CommandMatch {
 	}
 }
 
+func (s *Service) ExecuteCommand(ctx context.Context, event *napcat.GroupMessageEvent, match *CommandMatch) (*pendingOutbound, error) {
+	if match == nil {
+		return nil, nil
+	}
+	return s.handleMatchedCommand(ctx, event, *match)
+}
+
 func (s *Service) handleMatchedCommand(ctx context.Context, event *napcat.GroupMessageEvent, match CommandMatch) (*pendingOutbound, error) {
 	if match.Command.Handler == nil {
 		return nil, nil
 	}
 	return match.Command.Handler(ctx, event, match)
+}
+
+func (s *Service) NJKCommand() *CommandMatch {
+	return s.commandByKey(commandNJK)
 }
 
 func (s *Service) buildCommandHandler(key commandKey) commandHandler {
@@ -50,7 +61,7 @@ func (s *Service) buildCommandHandler(key commandKey) commandHandler {
 		}
 	case commandNJK:
 		return func(ctx context.Context, event *napcat.GroupMessageEvent, match CommandMatch) (*pendingOutbound, error) {
-			return s.handleNJKReply(ctx, event, event.GroupID.String())
+			return s.GenerateNJKReply(ctx, event, event.GroupID.String())
 		}
 	case commandAIC:
 		return func(ctx context.Context, event *napcat.GroupMessageEvent, match CommandMatch) (*pendingOutbound, error) {

@@ -32,7 +32,7 @@ func (s *Service) handleDiceCommand(_ context.Context, groupID string, match Com
 	results := make([]int, 0, count)
 	resultStrs := make([]string, 0, count)
 	for i := 0; i < count; i++ {
-		results = append(results, urand.Range(s.rng, 1, sides))
+		results = append(results, urand.Range(1, sides))
 		resultStrs = append(resultStrs, strconv.Itoa(results[i]))
 	}
 	return simpleOutbound(groupID, strings.Join(resultStrs, "+")+"="+strconv.Itoa(sum(results))), nil

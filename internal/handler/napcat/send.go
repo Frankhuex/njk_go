@@ -76,7 +76,7 @@ func (h *Handler) multiSendSegments(ctx context.Context, conn outboundWriter, gr
 }
 
 func (h *Handler) setMsgEmojiLike(ctx context.Context, conn outboundWriter, messageID string, emojiID string) error {
-	if err := urand.SleepMillis(ctx, h.service.Random(), 1000, 2000); err != nil {
+	if err := urand.SleepMillis(ctx, 1000, 2000); err != nil {
 		return err
 	}
 

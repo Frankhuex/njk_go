@@ -10,6 +10,8 @@ import (
 	"njk_go/internal/client/bbh"
 	"njk_go/internal/client/imagestore"
 	"njk_go/internal/config"
+	"njk_go/internal/napcat"
+	"njk_go/internal/util/unapcat"
 
 	"gorm.io/gorm"
 )
@@ -68,4 +70,38 @@ func NewService(cfg config.Config, db *gorm.DB, aiClient AICompleter, freeAIClie
 	service.commands = commands
 	service.commandMap = commandMap
 	return service
+}
+
+func (s *Service) IsGroupAllowed(groupID string) bool {
+	if len(s.cfg.AllowedGroupIDs) == 0 {
+		return true
+	}
+	_, ok := s.cfg.AllowedGroupIDs[groupID]
+	return ok
+}
+
+func (s *Service) IsUserBanned(userID string) bool {
+	_, banned := s.cfg.BannedUserIDs[userID]
+	return banned
+}
+
+func (s *Service) MentionsBot(message napcat.MessagePayload) bool {
+	return unapcat.MentionsUser(message, s.cfg.BotUserID)
+}
+
+func (s *Service) ShouldRandomReply() bool {
+	return s.rng.Float64() < 0.08
+}
+
+func (s *Service) CompleteActionResult(ctx context.Context, status string, retcode int, messageID string) error {
+	if status != "ok" || retcode != 0 || messageID == "" {
+		return nil
+	}
+
+	pending := s.pending.Pop()
+	if pending == nil || !pending.ShouldSave {
+		return nil
+	}
+
+	return s.saveSelfMessage(ctx, pending, messageID)
 }

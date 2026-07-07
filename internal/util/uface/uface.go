@@ -2,6 +2,8 @@ package uface
 
 import (
 	"encoding/json"
+	"sort"
+	"strconv"
 	"strings"
 
 	"njk_go/internal/napcat"
@@ -56,4 +58,23 @@ func ExtractFaceIDsFromRawJSON(rawJSON string) ([]string, error) {
 		return nil, err
 	}
 	return FaceIDsFromSegments(segments), nil
+}
+
+func SortFaceIDs(faceIDs []string) {
+	sort.SliceStable(faceIDs, func(i, j int) bool {
+		left, leftErr := strconv.ParseInt(faceIDs[i], 10, 64)
+		right, rightErr := strconv.ParseInt(faceIDs[j], 10, 64)
+		leftOK := leftErr == nil
+		rightOK := rightErr == nil
+		if leftOK && rightOK {
+			if left == right {
+				return faceIDs[i] < faceIDs[j]
+			}
+			return left < right
+		}
+		if leftOK != rightOK {
+			return leftOK
+		}
+		return faceIDs[i] < faceIDs[j]
+	})
 }

@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"njk_go/internal/napcat"
 	"njk_go/internal/util/urand"
+	"njk_go/internal/util/utext"
+	"njk_go/internal/util/utime"
 )
 
 func (s *Service) handleAIPromptCommand(ctx context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
@@ -67,15 +70,15 @@ func (s *Service) handleAICCommand(ctx context.Context, groupID string) (*pendin
 
 func (s *Service) handleReportCommand(ctx context.Context, groupID string, match CommandMatch) (*pendingOutbound, error) {
 	dayNum, _ := strconv.Atoi(match.Groups[1])
-	stats, err := s.store.ReportStats(ctx, groupID, startOfReport(dayNum), 10)
+	stats, err := s.store.ReportStats(ctx, groupID, utime.StartOfReport(dayNum, time.Now()), 10)
 	if err != nil {
 		return nil, err
 	}
 	return simpleOutbound(groupID, formatReport(stats, dayNum, 10)), nil
 }
 
-func (s *Service) handleNJKReply(ctx context.Context, event *napcat.GroupMessageEvent, groupID string) (*pendingOutbound, error) {
-	history, err := s.historyStrings(ctx, groupID, urand.Range(s.rng, 10, 30))
+func (s *Service) GenerateNJKReply(ctx context.Context, event *napcat.GroupMessageEvent, groupID string) (*pendingOutbound, error) {
+	history, err := s.historyStrings(ctx, groupID, urand.Range(10, 30))
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +97,7 @@ func (s *Service) handleNJKReply(ctx context.Context, event *napcat.GroupMessage
 		if err != nil {
 			return nil, err
 		}
-		if !containsExact(history, candidate) {
+		if !utext.ContainsExact(history, candidate) {
 			result = candidate
 			break
 		}
