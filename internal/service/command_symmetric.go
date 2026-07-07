@@ -77,7 +77,7 @@ func (s *Service) handleSymmetricCommand(ctx context.Context, groupID string, ma
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			data, err := s.imageService.download(ctx, *item.URL)
+			data, err := s.DownloadImageBytes(ctx, *item.URL)
 			if err != nil {
 				return
 			}

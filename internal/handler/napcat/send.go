@@ -99,7 +99,7 @@ func (h *Handler) setMsgEmojiLike(ctx context.Context, conn outboundWriter, mess
 }
 
 func (h *Handler) fileSegmentName(ctx context.Context, index int, sourceURL string) string {
-	data, err := h.service.DownloadImage(ctx, sourceURL)
+	data, err := h.service.DownloadImageBytes(ctx, sourceURL)
 	if err != nil {
 		log.Printf("【识别文件类型失败】url=%s err=%v", sourceURL, err)
 		return uimage.FallbackFileSegmentName(index, sourceURL)

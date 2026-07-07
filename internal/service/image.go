@@ -9,9 +9,7 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-	"io"
 	"log"
-	"net/http"
 	"strings"
 	"time"
 
@@ -23,22 +21,8 @@ import (
 
 const duplicateImageThreshold = 5
 
-type ImageService struct {
-	store      *pgstore.Store
-	httpClient *http.Client
-}
-
-func NewImageService(store *pgstore.Store) *ImageService {
-	return &ImageService{
-		store: store,
-		httpClient: &http.Client{
-			Timeout: 15 * time.Second,
-		},
-	}
-}
-
-func (s *ImageService) SaveAndCheckDuplicate(ctx context.Context, groupID string, imageURL string, messageID string) (*DuplicateImage, error) {
-	data, err := s.download(ctx, imageURL)
+func (s *Service) SaveAndCheckDuplicate(ctx context.Context, groupID string, imageURL string, messageID string) (*DuplicateImage, error) {
+	data, err := s.DownloadImageBytes(ctx, imageURL)
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +91,8 @@ func (s *ImageService) SaveAndCheckDuplicate(ctx context.Context, groupID string
 	}, nil
 }
 
-func (s *ImageService) EnsureEmojiWhitelist(ctx context.Context, groupID string, imageURL string) error {
-	data, err := s.download(ctx, imageURL)
+func (s *Service) EnsureEmojiWhitelist(ctx context.Context, groupID string, imageURL string) error {
+	data, err := s.DownloadImageBytes(ctx, imageURL)
 	if err != nil {
 		log.Printf("【下载图片失败】group=%s url=%s err=%v", groupID, imageURL, err)
 		return err
@@ -141,22 +125,11 @@ func (s *ImageService) EnsureEmojiWhitelist(ctx context.Context, groupID string,
 	return nil
 }
 
-func (s *ImageService) download(ctx context.Context, url string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
+func (s *Service) DownloadImageBytes(ctx context.Context, url string) ([]byte, error) {
+	if s == nil || s.httpClient == nil {
+		return nil, fmt.Errorf("http client not available")
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0")
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("download failed: %d", resp.StatusCode)
-	}
-	return io.ReadAll(resp.Body)
+	return s.httpClient.DownloadBytes(ctx, url)
 }
 
 func calculatePHash(data []byte) (string, error) {

@@ -9,6 +9,7 @@ import (
 
 	"njk_go/internal/dal/model"
 	"njk_go/internal/util/uface"
+	"njk_go/internal/util/uslice"
 	"njk_go/internal/util/utime"
 
 	"gorm.io/driver/postgres"
@@ -282,7 +283,7 @@ func (s *Store) RecentFaceIDRows(ctx context.Context, groupID string, limit int)
 		row := GetFaceIDMessageRow{MessageID: recent.MessageID}
 		if faceIDs, err := uface.ExtractFaceIDsFromRawJSON(recent.RawJSON); err == nil {
 			row.SegmentFaceIDs = faceIDs
-			uface.SortFaceIDs(row.SegmentFaceIDs)
+			uslice.SortIntStrings(row.SegmentFaceIDs)
 		}
 		result = append(result, row)
 		rowByMessageID[recent.MessageID] = &result[len(result)-1]
@@ -318,7 +319,7 @@ func (s *Store) RecentFaceIDRows(ctx context.Context, groupID string, limit int)
 		row.EmojiLikeFaceIDs = append(row.EmojiLikeFaceIDs, likeRow.FaceID)
 	}
 	for i := range result {
-		uface.SortFaceIDs(result[i].EmojiLikeFaceIDs)
+		uslice.SortIntStrings(result[i].EmojiLikeFaceIDs)
 	}
 	return result, nil
 }
@@ -328,13 +329,13 @@ func (s *Store) AllFaceIDs(ctx context.Context) ([]string, []string, error) {
 	if err := s.db.WithContext(ctx).Raw(`SELECT face_id FROM face`).Scan(&allFaceIDs).Error; err != nil {
 		return nil, nil, err
 	}
-	uface.SortFaceIDs(allFaceIDs)
+	uslice.SortIntStrings(allFaceIDs)
 
 	var likedFaceIDs []string
 	if err := s.db.WithContext(ctx).Raw(`SELECT DISTINCT face_id FROM emoji_like`).Scan(&likedFaceIDs).Error; err != nil {
 		return nil, nil, err
 	}
-	uface.SortFaceIDs(likedFaceIDs)
+	uslice.SortIntStrings(likedFaceIDs)
 
 	return allFaceIDs, likedFaceIDs, nil
 }

@@ -16,6 +16,7 @@ import (
 	"njk_go/internal/napcat"
 	"njk_go/internal/util/uface"
 	"njk_go/internal/util/unapcat"
+	"njk_go/internal/util/uslice"
 	"njk_go/internal/util/utext"
 	"njk_go/internal/util/utime"
 )
@@ -468,7 +469,7 @@ func TestEmojiLikeFaceIDsUsesLikes(t *testing.T) {
 
 func TestSortFaceIDsNumericOrder(t *testing.T) {
 	faceIDs := []string{"10", "2", "1", "abc", "20"}
-	uface.SortFaceIDs(faceIDs)
+	uslice.SortIntStrings(faceIDs)
 	want := []string{"1", "2", "10", "20", "abc"}
 	if strings.Join(faceIDs, ",") != strings.Join(want, ",") {
 		t.Fatalf("unexpected sorted face ids: %#v", faceIDs)

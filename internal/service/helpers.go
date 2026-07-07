@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"fmt"
 
 	"njk_go/internal/napcat"
@@ -41,11 +40,4 @@ func savedReplyOutbound(groupID string, replyMessageID string, message string) *
 		Message:    fmt.Sprintf("[CQ:reply,id=%s]%s", replyMessageID, message),
 		ShouldSave: true,
 	}
-}
-
-func (s *Service) DownloadImage(ctx context.Context, sourceURL string) ([]byte, error) {
-	if s == nil || s.imageService == nil {
-		return nil, fmt.Errorf("image service not available")
-	}
-	return s.imageService.download(ctx, sourceURL)
 }

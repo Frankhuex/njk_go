@@ -52,7 +52,7 @@ func (s *Service) SaveIncomingMessageAndCheckImages(ctx context.Context, event *
 			textParts = append(textParts, segment.Data.Text)
 		case napcat.SegmentTypeImage:
 			if isEmojiImage(segment) {
-				if err := s.imageService.EnsureEmojiWhitelist(ctx, groupID, segment.Data.URL); err != nil {
+				if err := s.EnsureEmojiWhitelist(ctx, groupID, segment.Data.URL); err != nil {
 					log.Printf("【表情白名单处理失败】group=%s err=%v", groupID, err)
 				}
 			}
@@ -105,7 +105,7 @@ func (s *Service) SaveIncomingMessageAndCheckImages(ctx context.Context, event *
 
 	duplicates := []DuplicateImage{}
 	for _, url := range imageURLs {
-		duplicate, err := s.imageService.SaveAndCheckDuplicate(ctx, groupID, url, messageID)
+		duplicate, err := s.SaveAndCheckDuplicate(ctx, groupID, url, messageID)
 		if err != nil {
 			log.Printf("【图片消重失败】message=%s err=%v", messageID, err)
 			continue

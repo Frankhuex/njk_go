@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	napcathandler "njk_go/internal/handler/napcat"
 	"njk_go/internal/config"
+	napcathandler "njk_go/internal/handler/napcat"
 	"njk_go/internal/napcat"
 	"njk_go/internal/service"
 )
@@ -36,7 +36,7 @@ func TestHandleNoticeSendsGroupMessage(t *testing.T) {
 		BotNickname:     "你居垦",
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
-	handler := napcathandler.New(botService)
+	handler := napcathandler.NewHandler(botService)
 	event := &napcat.NoticeEvent{
 		SelfID:   "1558109748",
 		TargetID: "1558109748",
@@ -86,7 +86,7 @@ func TestHandleNoticeIgnoresOtherTarget(t *testing.T) {
 		BotNickname:     "你居垦",
 		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil)
-	handler := napcathandler.New(botService)
+	handler := napcathandler.NewHandler(botService)
 	event := &napcat.NoticeEvent{
 		SelfID:   "1558109748",
 		TargetID: "42",

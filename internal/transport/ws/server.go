@@ -15,8 +15,8 @@ import (
 	"strings"
 	"sync"
 
-	napcathandler "njk_go/internal/handler/napcat"
 	"njk_go/internal/client/imagestore"
+	napcathandler "njk_go/internal/handler/napcat"
 	"njk_go/internal/napcat"
 	"njk_go/internal/service"
 )
@@ -36,7 +36,7 @@ type Server struct {
 }
 
 func NewServer(addr string, service *service.Service) *Server {
-	return &Server{addr: addr, service: service, handler: napcathandler.New(service), staticDir: "."}
+	return &Server{addr: addr, service: service, handler: napcathandler.NewHandler(service), staticDir: "."}
 }
 
 func (s *Server) ListenAndServe() error {

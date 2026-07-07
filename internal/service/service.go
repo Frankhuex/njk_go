@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"njk_go/internal/client/bbh"
+	httpclient "njk_go/internal/client/http"
 	"njk_go/internal/client/imagestore"
 	"njk_go/internal/client/pgstore"
 	"njk_go/internal/config"
@@ -25,7 +26,7 @@ type Service struct {
 	aiClient     AICompleter
 	freeAIClient AICompleter
 	bbhClient    *bbh.BBHClient
-	imageService *ImageService
+	httpClient   *httpclient.HttpClient
 	imageStore   *imagestore.ImageStoreClient
 	commands     []compiledCommand
 	commandMap   map[commandKey]compiledCommand
@@ -44,7 +45,7 @@ func NewService(cfg config.Config, store *pgstore.Store, aiClient AICompleter, f
 		aiClient:     aiClient,
 		freeAIClient: freeAIClient,
 		bbhClient:    bbhClient,
-		imageService: NewImageService(store),
+		httpClient:   httpclient.NewClient(15 * time.Second),
 		imageStore:   imagestore.NewClient(".", cfg.MyURL),
 		pending:      &pendingQueue{},
 		lastAI:       map[string]time.Time{},
