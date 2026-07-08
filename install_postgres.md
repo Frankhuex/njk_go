@@ -75,6 +75,25 @@ macOS:
 brew install pgvector
 ```
 ### 进psql加扩展：
+#### 必须以管理员账号登录psql
+Linux:
+```shell
+sudo -i -u postgres
+```
+macOS:
+```shell
+psql
+```
+#### 注意Linux中名字为vector，macOS中名字为pgvector
+Linux:
+```sql
+create extension if not exists vector;
+```
+macOS:
 ```sql
 create extension if not exists pgvector;
+```
+#### 验证安装：
+```sql
+SELECT extname FROM pg_extension WHERE extname = 'vector';
 ```

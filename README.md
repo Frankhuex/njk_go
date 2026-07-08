@@ -11,7 +11,7 @@
 - 图片查重与图片生成
 - 系统表情相关命令
 
-当前程序入口是项目根目录 `main.go`。
+当前在线服务入口是 `cmd/server/main.go`。
 
 ## 当前目录结构
 
@@ -19,6 +19,8 @@
 
 - `internal/service/`
   - 业务编排核心
+- `cmd/server/`
+  - 在线服务入口
 - `internal/handler/napcat/`
   - NapCat 事件入口与发送执行
 - `internal/client/pgstore/`
@@ -79,7 +81,7 @@ sh run.sh
 `run.sh` 会自动寻找本机可用的 Go 可执行文件，并执行：
 
 ```bash
-go run .
+go run ./cmd/server
 ```
 
 ### 手动运行
@@ -87,7 +89,7 @@ go run .
 如果本机 Go 环境已配置好，也可以直接执行：
 
 ```bash
-go run .
+go run ./cmd/server
 ```
 
 ## NapCat 配置

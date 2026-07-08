@@ -13,7 +13,7 @@
 
 本文档基于当前仓库实际结构整理，参考了以下现状：
 
-- 项目入口：`main.go`
+- 在线服务入口：`cmd/server/main.go`
 - 业务核心：`internal/service/`
 - 数据访问：`internal/client/pgstore/pgstore.go`
 - AI 调用：`internal/client/ai/ai.go`
@@ -28,7 +28,7 @@
 
 当前项目的主运行链路是：
 
-1. `main.go` 读取配置
+1. `cmd/server/main.go` 读取配置
 2. `pgstore.InitStore(cfg.DSN())` 初始化 PostgreSQL
 3. `service.NewService(...)` 装配业务依赖
 4. `ws.NewServer(...)` 启动 NapCat WebSocket 服务
@@ -525,11 +525,11 @@ V1 建议不要把阈值写死在 SQL 里，而是由服务层可配置：
 
 当前仓库有：
 
-- 生成入口：`gen_gorm/main.go`
+- 生成入口：`cmd/gen-gorm/main.go`
 - 生成脚本：`gen_gorm.sh`
 - 生成结果目录：`internal/dal/model/`、`internal/dal/query/`
 
-但当前 `gen_gorm/main.go` 中的输出路径仍然写着旧目录：
+当前 `cmd/gen-gorm/main.go` 中负责配置生成输出目录：
 
 - `./internal/query`
 - `./internal/model`
@@ -539,7 +539,7 @@ V1 建议不要把阈值写死在 SQL 里，而是由服务层可配置：
 - `./internal/dal/query`
 - `./internal/dal/model`
 
-因此，在给记忆表生成 model 之前，建议先统一 `gen_gorm` 的输出路径配置，再执行生成。
+因此，在给记忆表生成 model 之前，建议先确认 `cmd/gen-gorm/main.go` 中的输出路径配置，再执行生成。
 
 ### 11.2 记忆表模型生成步骤
 
@@ -547,7 +547,7 @@ V1 建议不要把阈值写死在 SQL 里，而是由服务层可配置：
 
 1. 在 SQL 文件中加入 `memory_fact`、`memory_impression` 及索引 DDL
 2. 在数据库中执行建表
-3. 修正 `gen_gorm/main.go` 的输出目录，使其与 `internal/dal/` 保持一致
+3. 确认 `cmd/gen-gorm/main.go` 的输出目录与 `internal/dal/` 保持一致
 4. 为 `vector` 类型增加自定义类型映射
 5. 执行 `sh gen_gorm.sh`
 6. 检查 `internal/dal/model/` 下是否生成对应 model
@@ -921,7 +921,7 @@ V1 建议：
 
 1. 确认 embedding 模型维度
 2. 在 SQL 中加入两张记忆表和索引
-3. 修正 `gen_gorm/main.go` 的输出目录
+3. 确认 `cmd/gen-gorm/main.go` 的输出目录
 4. 为 `vector` 类型补充生成映射
 5. 生成 gorm model
 

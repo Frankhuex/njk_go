@@ -20,13 +20,13 @@
 - 提供 `.face`、`.faceid`、`.getfaceid`、`.allface` 等系统表情相关命令
 - 生成并回发对称图片
 
-程序入口是项目根目录 `main.go`。
+在线服务入口是 `cmd/server/main.go`。
 
 ## 目录地图
 
 ### 运行主链
 
-- `main.go`
+- `cmd/server/main.go`
   - 读取配置
   - 初始化 `pgstore.Store`
   - 构造 `service.Service`
@@ -97,7 +97,7 @@
 
 关键文件：
 
-- `main.go`
+- `cmd/server/main.go`
 - `internal/config/config.go`
 - `internal/client/pgstore/pgstore.go`
 - `internal/service/service.go`
@@ -435,7 +435,7 @@ NapCat 入站 JSON 的处理流程：
 
 第一次接手本仓库时，建议按这个顺序阅读：
 
-1. `main.go`
+1. `cmd/server/main.go`
 2. `internal/config/config.go`
 3. `internal/client/pgstore/pgstore.go`
 4. `internal/service/service.go`
