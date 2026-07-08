@@ -6,6 +6,7 @@ import (
 
 	"njk_go/internal/client/ai"
 	"njk_go/internal/client/bbh"
+	"njk_go/internal/client/imagegen"
 	"njk_go/internal/client/pgstore"
 	"njk_go/internal/config"
 	"njk_go/internal/service"
@@ -39,6 +40,7 @@ func main() {
 		ai.NewClient(cfg.BaseURL, cfg.APIKey, cfg.ModelName),
 		ai.NewClient(cfg.EmbedBaseURL, cfg.EmbedAPIKey, cfg.EmbedModelName),
 		ai.NewClient(freeModelBaseURL, freeModelAPIKey, cfg.FreeModelName),
+		imagegen.NewClient(cfg.ImageGenBaseURL, cfg.ImageGenAPIKey, cfg.ImageGenModelName),
 		bbh.NewClient(cfg.BBHBaseURL),
 	)
 

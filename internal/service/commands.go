@@ -96,6 +96,10 @@ func (s *Service) buildCommandHandler(key commandKey) commandHandler {
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
 			return s.handleImageToFileCommand(ctx, cmdCtx.GroupID, match)
 		}
+	case commandGenerateImage:
+		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
+			return s.handleGenerateImageCommand(ctx, cmdCtx.GroupID, match)
+		}
 	case commandDice:
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
 			return s.handleDiceCommand(ctx, cmdCtx.GroupID, match)
@@ -106,7 +110,7 @@ func (s *Service) buildCommandHandler(key commandKey) commandHandler {
 		}
 	case commandHelp:
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
-			return simpleOutbound(cmdCtx.GroupID, helpText), nil
+			return simpleOutbound(cmdCtx.GroupID, buildHelpText(s.cfg)), nil
 		}
 	case commandHelpBBH:
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {

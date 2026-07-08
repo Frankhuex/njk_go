@@ -1,6 +1,11 @@
 package service
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+
+	"njk_go/internal/config"
+)
 
 type commandKey string
 
@@ -23,6 +28,7 @@ const (
 	commandAllFace            commandKey = "all_face"
 	commandJSON               commandKey = "json"
 	commandFile               commandKey = "file"
+	commandGenerateImage      commandKey = "generate_image"
 	commandDice               commandKey = "dice"
 	commandSymmetricLeft      commandKey = "symmetric_left"
 	commandSymmetricRight     commandKey = "symmetric_right"
@@ -49,7 +55,7 @@ type commandDef struct {
 	SystemPrompt string
 }
 
-var helpText = `.概括 .总结 .俳句 .无只因 .最 .vs .ccb .xmas 
+var helpTextBase = `.概括 .总结 .俳句 .无只因 .最 .vs .ccb .xmas 
 后面均需要接数字，表示结合的前面消息条数，不包含指令消息
 消息中含有你居垦三个字就会触发自动回复
 .报告 后面需要接数字，表示报告查询的天数
@@ -59,6 +65,7 @@ var helpText = `.概括 .总结 .俳句 .无只因 .最 .vs .ccb .xmas
 .allface 查看所有已记录系统表情id和被贴过的系统表情id
 .json 后面接数字，表示返回本群最近已保存消息的raw_json
 .file 后面接数字，表示把本群最近消息里的图片/动图作为文件发出
+.生图 后面接数字，表示从本群最近 n 条消息中取最近一条可用文本和最新一张图进行生图
 .2d6 掷2次6面骰子，支持写成 .2 d 6
 .对称左/.对称右/.对称上/.对称下 生成对应方向的半边对称图
 .对称左上/.对称右上/.对称左下/.对称右下 生成对应角来源的四象限对称图
@@ -66,6 +73,15 @@ var helpText = `.概括 .总结 .俳句 .无只因 .最 .vs .ccb .xmas
 .ai 后面接数字，表示结合的前面消息条数，不包含指令消息，正常AI助手式回答
 .aic 会继续上一个.ai的话题，不包含指令消息。（总共读取=上一个.ai读取的消息+之后的全部消息）
 `
+
+func buildHelpText(cfg config.Config) string {
+	models := []string{
+		fmt.Sprintf("主模型：%s", firstNonEmpty(strings.TrimSpace(cfg.ModelName), "未配置")),
+		fmt.Sprintf("记忆分拣模型：%s", firstNonEmpty(strings.TrimSpace(cfg.FreeModelName), "未配置")),
+		fmt.Sprintf("嵌入模型：%s", firstNonEmpty(strings.TrimSpace(cfg.EmbedModelName), "未配置")),
+	}
+	return helpTextBase + "\n当前模型配置：\n" + strings.Join(models, "\n")
+}
 
 var helpBBHText = `bbh模块讲解：
 .bbh  
@@ -232,6 +248,10 @@ ccb句式形如“豌豆笑传之踩踩背”。
 		{
 			Key:     commandFile,
 			Pattern: `^ *\.file *(\d+) *$`,
+		},
+		{
+			Key:     commandGenerateImage,
+			Pattern: `^ *\.生图 *(\d+) *$`,
 		},
 		{
 			Key:     commandDice,
