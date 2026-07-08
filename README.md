@@ -1,56 +1,291 @@
-# NJK使用方法
-## 0. 安装PostgreSQL
-## 1. 启动Go WebSocket服务器（就是这里的代码）
-### 1.1 修改环境变量
-在根目录创建.env，参考.env.example，根据实际情况定义以下8个变量：
-PostgreSQL相关的：
-DB_NAME
-DB_HOST
-DB_USER
-DB_PWD
-DB_PORT
+# NJK Go 使用说明
 
-大模型API相关的：
-API_KEY
-BASE_URL
-MODEL_NAME
+## 项目简介
 
-### 1.2 启动Go Websocket服务器
-直接用Go runtime运行
+这是一个基于 NapCat 反向 WebSocket 的群聊机器人服务，当前支持：
+
+- 群消息、notice、action 回执处理
+- PostgreSQL 消息落库
+- AI 回复
+- 主模型多模态输入
+- BBH 命令
+- 图片查重、对称图生成与 `.生图`
+- 系统表情相关命令
+
+当前在线服务入口是 `cmd/server/main.go`。
+
+## 当前目录结构
+
+核心目录如下：
+
+- `internal/service/`
+  - 业务编排核心
+- `cmd/server/`
+  - 在线服务入口
+- `cmd/memory-factory/`
+  - 离线记忆生产入口
+- `cmd/gen-gorm/`
+  - gorm/gen 代码生成入口
+- `internal/handler/napcat/`
+  - NapCat 事件入口与发送执行
+- `internal/client/pgstore/`
+  - PostgreSQL `Store`
+- `internal/client/ai/`
+  - 聊天与 embedding AI client
+- `internal/client/imagegen/`
+  - SiliconFlow 生图 client
+- `internal/client/bbh/`
+  - BBH client
+- `internal/client/http/`
+  - 下载 bytes 的 HTTP client
+- `internal/client/imagestore/`
+  - 本地图片读写与图片 URL 生成
+- `internal/napcat/`
+  - NapCat 协议定义与入站解析
+- `internal/transport/ws/`
+  - WebSocket server 与 `/images/` 静态资源
+
+## 环境准备
+
+### 1. PostgreSQL
+
+请先准备一个可访问的 PostgreSQL 数据库，并提前创建项目所需表结构。
+
+### 2. 环境变量
+
+在项目根目录创建 `.env`，参考 `.env.example`。
+
+当前主要配置项包括：
+
+- 数据库相关
+  - `DB_NAME`
+  - `DB_HOST`
+  - `DB_USER`
+  - `DB_PWD`
+  - `DB_PORT`
+- AI 相关
+  - `API_KEY`
+  - `BASE_URL`
+  - `MODEL_NAME`
+  - `EMBED_API_KEY`
+  - `EMBED_BASE_URL`
+  - `EMBED_MODEL_NAME`
+  - `IMAGE_GEN_API_KEY`
+  - `IMAGE_GEN_BASE_URL`
+  - `IMAGE_GEN_MODEL_NAME`
+  - `FREE_MODEL_API_KEY`
+  - `FREE_MODEL_BASE_URL`
+  - `FREE_MODEL_NAME`
+- 服务相关
+  - `WS_ADDR`
+  - `MY_URL`
+  - `BOT_USER_ID`
+  - `BOT_NICKNAME`
+  - `GROUP_IDS`
+  - `BANNED_USER_IDS`
+  - `BBH_BASE_URL`
+
+## 启动 Go 服务
+
+### 直接运行
+
 ```bash
-sh run_ws_server.sh
-```
-或先编译
-```bash
-sh build_ws_server.sh
-```
-再运行
-```bash
-./build/njk_go-linux-amd64
+sh run.sh
 ```
 
-## 2. 启动Napcat的Docker容器
-### 2.1 根据实际情况修改docker-compose.yml
-修改ports和container_name！
-ports左侧是宿主机端口，右侧是容器端口，只需要改左侧成你要的端口。
-container_name不能和电脑上其他容器名称重复。
-### 2.2 启动容器
+`run.sh` 会自动寻找本机可用的 Go 可执行文件，并执行：
+
+```bash
+go run ./cmd/server
+```
+
+默认运行在线服务；如需切到离线记忆生产：
+
+```bash
+sh run.sh --memory
+```
+
+## 离线记忆生产
+
+### 启动方式
+
+```bash
+sh run.sh --memory
+```
+
+脚本会执行：
+
+```bash
+go run ./cmd/memory-factory
+```
+
+### 当前行为
+
+- 首次运行默认从每群最早消息开始
+- 之后默认按最新游标做增量续跑
+- 本次运行上界固定为启动时刻
+- 每群一个 goroutine
+- 每分钟每群处理最多 100 条消息
+- 运行状态保存在 `runtime/memory-backfill/state.json`
+- 归档历史保存在 `runtime/memory-backfill/history/`
+
+## 当前主要命令
+
+- AI 总结类
+  - `.概括`
+  - `.总结`
+  - `.俳句`
+  - `.无只因`
+  - `.最`
+  - `.vs`
+  - `.ccb`
+  - `.xmas`
+- 对话类
+  - `.ai`
+  - `.aic`
+  - 自动 `NJK` 回复
+- 历史/表情类
+  - `.报告`
+  - `.face`
+  - `.faceid`
+  - `.getfaceid`
+  - `.allface`
+- 图片类
+  - `.file`
+  - `.生图`
+  - `.对称左/.对称右/.对称上/.对称下`
+  - `.对称左上/.对称右上/.对称左下/.对称右下`
+- 工具类
+  - `.XdY`
+- 帮助类
+  - `.help`
+  - `.help bbh`
+- BBH 类
+  - `.bbh`
+  - `.bbh <bookID>`
+  - `.bbh <bookID> <para>`
+  - `.bbh <bookID> <left>-<right>`
+  - `.bbh <bookID> add ...`
+  - `.bbh <bookID> ai`
+
+## AI 与生图
+
+- 主模型 `aiClient`
+  - 当前支持单模态与多模态输入
+  - 历史消息类命令会自动把最近消息中的图片一并带入主模型
+  - 多模态失败时会自动降级：
+    - 全部图片
+    - 最新一张图片
+    - 纯文本
+- 记忆相关
+  - `embedClient` 负责 embedding
+  - `freeAIClient` 负责记忆分拣与相关轻量模型调用
+- 生图
+  - `.生图 n` 使用 SiliconFlow 图片生成接口
+  - 从最近 `n` 条消息中提取全部可用文本
+  - 并选取最近一张图片作为参考图
+  - 返回的远程图片 URL 直接通过现有发图链回发
+
+### 手动运行
+
+如果本机 Go 环境已配置好，也可以直接执行：
+
+```bash
+go run ./cmd/server
+```
+
+## NapCat 配置
+
+### 1. 启动 NapCat 容器
+
+根据你的部署方式启动 NapCat，例如：
+
 ```bash
 docker compose -p 项目名称 up --build -d
 ```
-项目名称可自选，或者“-p 项目名称”如果不写就会默认用当前目录文件夹名称作为项目名称
-注意新版docker compose没有短杠-了
-### 2.3 进入容器日志扫码登录
+
+注意：
+
+- `ports` 左侧是宿主机端口，按实际需要修改
+- `container_name` 不能与本机已有容器重复
+
+### 2. 登录 NapCat
+
+查看容器日志：
+
 ```bash
 docker logs -f 容器名称
 ```
-进去找到二维码，扫码登录
-再找到token，一般在二维码前面一点，记住！
-按Ctrl+C退出日志
-### 2.4 去WebUI配置WebSocket
-浏览器登录http://你的ip:你的端口，这里端口是你在docker-compose.yml中配置的，映射到6099的端口。
-输入token登录。
-找到网络配置，创建WebSocket客户端，URL填：“ws://host.docker.internal:你的Go服务器端口”，端口必须和在internal/config/config.go定义的一致.
 
-下面两个重连间隔可以修改，我喜欢3000ms
-然后就能启动了
+然后：
+
+- 扫码登录
+- 记录 token
+
+### 3. 配置 WebSocket 客户端
+
+进入 NapCat Web UI 后，创建 WebSocket 客户端：
+
+- URL 填写：
+
+```text
+ws://host.docker.internal:你的Go服务端口
+```
+
+其中端口应与你配置的 `WS_ADDR` 保持一致。
+
+可按需设置重连间隔，例如 `3000ms`。
+
+## 本地图片访问
+
+服务启动后会同时暴露：
+
+- `/images/`
+
+用于访问本地生成的图片文件。
+
+图片文件由：
+
+- `internal/client/imagestore/`
+
+负责保存到项目根目录下的 `images/` 目录，并生成可访问 URL。
+
+## 开发与调试
+
+建议本地调试顺序：
+
+1. 先跑测试
+
+```bash
+go test ./...
+```
+
+2. 再启动服务
+
+```bash
+sh run.sh
+```
+
+如需离线补生产旧记忆，可单独执行：
+
+```bash
+sh run.sh --memory
+```
+
+## 当前启动链路
+
+当前启动流程如下：
+
+1. `config.Load()`
+2. `pgstore.InitStore(cfg.DSN())`
+3. `service.NewService(...)`
+4. `ws.NewServer(...)`
+5. `ListenAndServe()`
+
+## 补充说明
+
+- 当前数据库访问统一由 `internal/client/pgstore/pgstore.go` 提供
+- 当前 NapCat 事件由 `internal/handler/napcat/handler.go` 承接
+- 当前图片下载能力由 `internal/client/http/http.go` 提供
+- 当前图片生成能力由 `internal/client/imagegen/siliconflow.go` 提供
+- 当前通用纯函数优先沉淀到 `internal/util/u*`

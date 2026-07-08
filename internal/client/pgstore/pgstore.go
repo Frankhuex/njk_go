@@ -250,6 +250,50 @@ func (s *Store) RecentMessageImages(ctx context.Context, groupID string, limit i
 	return rows, nil
 }
 
+func (s *Store) RecentMessageAndImages(ctx context.Context, groupID string, limit int) ([]MessageWithImages, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
+	messages, err := s.RecentMessages(ctx, groupID, limit)
+	if err != nil {
+		return nil, err
+	}
+	if len(messages) == 0 {
+		return nil, nil
+	}
+
+	messageIDs := make([]string, 0, len(messages))
+	rowsByID := make(map[string]*MessageWithImages, len(messages))
+	result := make([]MessageWithImages, 0, len(messages))
+	for _, message := range messages {
+		row := MessageWithImages{Message: message}
+		result = append(result, row)
+		rowsByID[message.MessageID] = &result[len(result)-1]
+		messageIDs = append(messageIDs, message.MessageID)
+	}
+
+	var images []StoredImage
+	err = s.db.WithContext(ctx).
+		Table(`image AS i`).
+		Select(`i.id, i.message_id, i.image_hash, COALESCE(i.url, '') AS url, m.time, COALESCE(m.sender_id, '') AS sender_id, COALESCE(u.nickname, '') AS nickname, COALESCE(m.card, '') AS card`).
+		Joins(`JOIN message m ON i.message_id = m.message_id`).
+		Joins(`LEFT JOIN "user" u ON m.sender_id = u.user_id`).
+		Where("i.message_id IN ?", messageIDs).
+		Order("m.time ASC, i.id ASC").
+		Scan(&images).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, image := range images {
+		row := rowsByID[image.MessageID]
+		if row == nil {
+			continue
+		}
+		row.Images = append(row.Images, image)
+	}
+	return result, nil
+}
+
 func (s *Store) RecentFaceIDRows(ctx context.Context, groupID string, limit int) ([]GetFaceIDMessageRow, error) {
 	if limit <= 0 {
 		return nil, nil
@@ -348,6 +392,55 @@ func (s *Store) MessagesSince(ctx context.Context, groupID string, start time.Ti
 		Joins(`LEFT JOIN "user" u ON m.sender_id = u.user_id`).
 		Where("m.group_id = ? AND m.time >= ?", groupID, start).
 		Order("m.time ASC").
+		Scan(&rows).Error
+	return rows, err
+}
+
+func (s *Store) GroupIDsWithMessages(ctx context.Context) ([]string, error) {
+	var groupIDs []string
+	err := s.db.WithContext(ctx).
+		Table("message").
+		Distinct("group_id").
+		Where("group_id IS NOT NULL AND group_id <> ''").
+		Order("group_id ASC").
+		Pluck("group_id", &groupIDs).Error
+	return groupIDs, err
+}
+
+func (s *Store) EarliestGroupMessageTime(ctx context.Context, groupID string) (time.Time, error) {
+	type row struct {
+		Time time.Time `gorm:"column:time"`
+	}
+	var result row
+	err := s.db.WithContext(ctx).
+		Table("message").
+		Select("time").
+		Where("group_id = ?", groupID).
+		Order("time ASC, message_id ASC").
+		Limit(1).
+		Scan(&result).Error
+	return result.Time, err
+}
+
+func (s *Store) HistoricalMessagesBatch(ctx context.Context, groupID string, afterTime *time.Time, afterMessageID string, endAt time.Time, limit int) ([]StoredMessage, error) {
+	if groupID == "" || limit <= 0 {
+		return nil, nil
+	}
+
+	query := s.db.WithContext(ctx).
+		Table(`message AS m`).
+		Select(`m.message_id, m.time, COALESCE(m.sender_id, '') AS sender_id, COALESCE(u.nickname, '') AS nickname, COALESCE(m.card, '') AS card, COALESCE(m.text, '') AS text, COALESCE(m.raw_message, '') AS raw_message, COALESCE(m.raw_json::text, '') AS raw_json`).
+		Joins(`LEFT JOIN "user" u ON m.sender_id = u.user_id`).
+		Where("m.group_id = ? AND m.time <= ?", groupID, endAt)
+
+	if afterTime != nil && !afterTime.IsZero() {
+		query = query.Where("(m.time > ?) OR (m.time = ? AND m.message_id > ?)", *afterTime, *afterTime, afterMessageID)
+	}
+
+	var rows []StoredMessage
+	err := query.
+		Order("m.time ASC, m.message_id ASC").
+		Limit(limit).
 		Scan(&rows).Error
 	return rows, err
 }
@@ -462,6 +555,11 @@ type StoredImage struct {
 	SenderID  string    `gorm:"column:sender_id"`
 	Nickname  string    `gorm:"column:nickname"`
 	Card      string    `gorm:"column:card"`
+}
+
+type MessageWithImages struct {
+	Message StoredMessage
+	Images  []StoredImage
 }
 
 type ReportStats struct {

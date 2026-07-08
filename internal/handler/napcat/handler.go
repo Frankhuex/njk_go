@@ -72,6 +72,7 @@ func (h *Handler) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 	if match != nil {
 		commandName = match.Key()
 	}
+	cmdCtx := service.CommandContextFromGroupMessageEvent(event)
 	log.Printf("【处理群消息】%s - 群:%s 消息:%s 命中:%s", clientAddr, groupID, event.RawMessage, commandName)
 
 	actions := make([]service.OutboundAction, 0)
@@ -91,14 +92,14 @@ func (h *Handler) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 	}
 
 	if match != nil {
-		action, err := h.service.ExecuteCommand(ctx, event, match)
+		action, err := h.service.ExecuteCommand(ctx, cmdCtx, match)
 		if err != nil {
 			log.Printf("【命令处理失败】%s - %v", clientAddr, err)
 		} else if action != nil {
 			actions = append(actions, *action)
 		}
 	} else if h.service.ShouldRandomReply() {
-		action, err := h.service.GenerateNJKReply(ctx, event, groupID)
+		action, err := h.service.GenerateNJKReply(ctx, cmdCtx)
 		if err != nil {
 			log.Printf("【随机发言失败】%s - %v", clientAddr, err)
 		} else if action != nil {

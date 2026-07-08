@@ -8,6 +8,7 @@ import (
 
 	"njk_go/internal/client/bbh"
 	httpclient "njk_go/internal/client/http"
+	"njk_go/internal/client/imagegen"
 	"njk_go/internal/client/imagestore"
 	"njk_go/internal/client/pgstore"
 	"njk_go/internal/config"
@@ -18,37 +19,49 @@ import (
 
 type AICompleter interface {
 	Complete(ctx context.Context, systemPrompt string, userPrompt string, temperature *float64) (string, error)
+	CompleteMultimodal(ctx context.Context, systemPrompt string, text string, imageURLs []string, temperature *float64) (string, error)
+}
+
+type Embedder interface {
+	Embed(ctx context.Context, input string) ([]float32, error)
+	EmbedBatch(ctx context.Context, inputs []string) ([][]float32, error)
 }
 
 type Service struct {
-	cfg          config.Config
-	store        *pgstore.Store
-	aiClient     AICompleter
-	freeAIClient AICompleter
-	bbhClient    *bbh.BBHClient
-	httpClient   *httpclient.HttpClient
-	imageStore   *imagestore.ImageStoreClient
-	commands     []compiledCommand
-	commandMap   map[commandKey]compiledCommand
-	pending      *pendingQueue
-	lastAIMu     sync.Mutex
-	lastAI       map[string]time.Time
+	cfg            config.Config
+	store          *pgstore.Store
+	aiClient       AICompleter
+	embedClient    Embedder
+	freeAIClient   AICompleter
+	imageGenClient *imagegen.Client
+	bbhClient      *bbh.BBHClient
+	httpClient     *httpclient.HttpClient
+	imageStore     *imagestore.ImageStoreClient
+	commands       []compiledCommand
+	commandMap     map[commandKey]compiledCommand
+	pending        *pendingQueue
+	memoryPending  *pendingMemoryQueue
+	lastAIMu       sync.Mutex
+	lastAI         map[string]time.Time
 }
 
-func NewService(cfg config.Config, store *pgstore.Store, aiClient AICompleter, freeAIClient AICompleter, bbhClient *bbh.BBHClient) *Service {
+func NewService(cfg config.Config, store *pgstore.Store, aiClient AICompleter, embedClient Embedder, freeAIClient AICompleter, imageGenClient *imagegen.Client, bbhClient *bbh.BBHClient) *Service {
 	defs := commandDefs(cfg.BotUserID)
 	commands := make([]compiledCommand, 0, len(defs))
 	commandMap := make(map[commandKey]compiledCommand, len(defs))
 	service := &Service{
-		cfg:          cfg,
-		store:        store,
-		aiClient:     aiClient,
-		freeAIClient: freeAIClient,
-		bbhClient:    bbhClient,
-		httpClient:   httpclient.NewClient(15 * time.Second),
-		imageStore:   imagestore.NewClient(".", cfg.MyURL),
-		pending:      &pendingQueue{},
-		lastAI:       map[string]time.Time{},
+		cfg:            cfg,
+		store:          store,
+		aiClient:       aiClient,
+		embedClient:    embedClient,
+		freeAIClient:   freeAIClient,
+		imageGenClient: imageGenClient,
+		bbhClient:      bbhClient,
+		httpClient:     httpclient.NewClient(15 * time.Second),
+		imageStore:     imagestore.NewClient(".", cfg.MyURL),
+		pending:        &pendingQueue{},
+		memoryPending:  newPendingMemoryQueue(memoryBatchSize, memoryBatchMaxIdle),
+		lastAI:         map[string]time.Time{},
 	}
 	for _, def := range defs {
 		source := def.Pattern
@@ -66,6 +79,9 @@ func NewService(cfg config.Config, store *pgstore.Store, aiClient AICompleter, f
 	}
 	service.commands = commands
 	service.commandMap = commandMap
+	if service.store != nil && service.embedClient != nil {
+		go service.runMemoryBatchLoop()
+	}
 	return service
 }
 

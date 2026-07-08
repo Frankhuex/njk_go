@@ -5,21 +5,23 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$ROOT_DIR/../NJK/.env"
 SQL_FILE="$ROOT_DIR/sql/create_njk_tables.sql"
 
+ENV_DB_NAME="${DB_NAME:-}"
+ENV_DB_HOST="${DB_HOST:-}"
+ENV_DB_PORT="${DB_PORT:-}"
+ENV_DB_USER="${DB_USER:-}"
+ENV_DB_PWD="${DB_PWD:-}"
+
 if [[ -f "$ENV_FILE" ]]; then
   set -a
   source "$ENV_FILE"
   set +a
 fi
 
-DB_NAME="${DB_NAME:-njk}"
-DB_HOST="${DB_HOST:-localhost}"
-DB_PORT="${DB_PORT:-5432}"
-DB_USER="${DB_USER:-njk}"
-DB_PWD="${DB_PWD:-}"
-
-if [[ "$DB_USER" == "postgres" ]]; then
-  DB_USER="njk"
-fi
+DB_NAME="${ENV_DB_NAME:-${DB_NAME:-njk}}"
+DB_HOST="${ENV_DB_HOST:-${DB_HOST:-localhost}}"
+DB_PORT="${ENV_DB_PORT:-${DB_PORT:-5432}}"
+DB_USER="${ENV_DB_USER:-${DB_USER:-njk}}"
+DB_PWD="${ENV_DB_PWD:-${DB_PWD:-}}"
 
 if [[ "$DB_NAME" != "njk" ]]; then
   echo "[ERROR] 该脚本只允许连接 njk 数据库，当前 DB_NAME=$DB_NAME"

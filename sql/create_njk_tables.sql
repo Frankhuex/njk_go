@@ -5,6 +5,8 @@ BEGIN
     END IF;
 END $$;
 
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE IF NOT EXISTS "user" (
     user_id VARCHAR(30) PRIMARY KEY,
     nickname VARCHAR(100) NOT NULL
@@ -161,6 +163,66 @@ CREATE INDEX IF NOT EXISTS idx_msg_word_word_id
 
 CREATE INDEX IF NOT EXISTS idx_msg_word_message_word
     ON msg_word (message_id, word_id);
+
+CREATE TABLE IF NOT EXISTS memory_fact (
+    id BIGSERIAL PRIMARY KEY,
+    group_id VARCHAR(30) NOT NULL REFERENCES "group"(group_id) ON DELETE CASCADE,
+    user_id VARCHAR(30) NULL REFERENCES "user"(user_id) ON DELETE SET NULL,
+    message_id VARCHAR(30) NULL REFERENCES message(message_id) ON DELETE SET NULL,
+    content TEXT NOT NULL,
+    content_hash VARCHAR(32) NOT NULL,
+    embedding VECTOR(1024) NOT NULL,
+    confidence REAL NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_memory_fact_group_id
+    ON memory_fact (group_id);
+
+CREATE INDEX IF NOT EXISTS idx_memory_fact_group_user
+    ON memory_fact (group_id, user_id);
+
+CREATE INDEX IF NOT EXISTS idx_memory_fact_message_id
+    ON memory_fact (message_id);
+
+CREATE INDEX IF NOT EXISTS idx_memory_fact_group_hash
+    ON memory_fact (group_id, content_hash);
+
+CREATE INDEX IF NOT EXISTS idx_memory_fact_embedding_hnsw
+    ON memory_fact USING hnsw (embedding vector_cosine_ops);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_memory_fact_active_hash
+    ON memory_fact (group_id, COALESCE(user_id, ''), content_hash)
+    WHERE is_active = TRUE;
+
+CREATE TABLE IF NOT EXISTS memory_impression (
+    id BIGSERIAL PRIMARY KEY,
+    group_id VARCHAR(30) NOT NULL REFERENCES "group"(group_id) ON DELETE CASCADE,
+    user_id VARCHAR(30) NOT NULL REFERENCES "user"(user_id) ON DELETE CASCADE,
+    message_id VARCHAR(30) NULL REFERENCES message(message_id) ON DELETE SET NULL,
+    content TEXT NOT NULL,
+    content_hash VARCHAR(32) NOT NULL,
+    embedding VECTOR(768) NOT NULL,
+    confidence REAL NOT NULL DEFAULT 0,
+    version INTEGER NOT NULL DEFAULT 1,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_memory_impression_group_user
+    ON memory_impression (group_id, user_id);
+
+CREATE INDEX IF NOT EXISTS idx_memory_impression_message_id
+    ON memory_impression (message_id);
+
+CREATE INDEX IF NOT EXISTS idx_memory_impression_group_hash
+    ON memory_impression (group_id, user_id, content_hash);
+
+CREATE INDEX IF NOT EXISTS idx_memory_impression_embedding_hnsw
+    ON memory_impression USING hnsw (embedding vector_cosine_ops);
 
 CREATE TABLE IF NOT EXISTS face (
     face_id VARCHAR(30) PRIMARY KEY
