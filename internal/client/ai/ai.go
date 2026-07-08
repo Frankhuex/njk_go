@@ -12,19 +12,17 @@ import (
 )
 
 type AIClient struct {
-	baseURL        string
-	apiKey         string
-	modelName      string
-	embedModelName string
-	httpClient     *http.Client
+	baseURL    string
+	apiKey     string
+	modelName  string
+	httpClient *http.Client
 }
 
-func NewClient(baseURL string, apiKey string, modelName string, embedModelName string) *AIClient {
+func NewClient(baseURL string, apiKey string, modelName string) *AIClient {
 	return &AIClient{
-		baseURL:        strings.TrimRight(baseURL, "/"),
-		apiKey:         apiKey,
-		modelName:      modelName,
-		embedModelName: embedModelName,
+		baseURL:   strings.TrimRight(baseURL, "/"),
+		apiKey:    apiKey,
+		modelName: modelName,
 		httpClient: &http.Client{
 			Timeout: 90 * time.Second,
 		},

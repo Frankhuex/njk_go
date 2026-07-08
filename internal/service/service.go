@@ -20,8 +20,7 @@ type AICompleter interface {
 	Complete(ctx context.Context, systemPrompt string, userPrompt string, temperature *float64) (string, error)
 }
 
-type AIClient interface {
-	AICompleter
+type Embedder interface {
 	Embed(ctx context.Context, input string) ([]float32, error)
 	EmbedBatch(ctx context.Context, inputs []string) ([][]float32, error)
 }
@@ -29,7 +28,8 @@ type AIClient interface {
 type Service struct {
 	cfg           config.Config
 	store         *pgstore.Store
-	aiClient      AIClient
+	aiClient      AICompleter
+	embedClient   Embedder
 	freeAIClient  AICompleter
 	bbhClient     *bbh.BBHClient
 	httpClient    *httpclient.HttpClient
@@ -42,7 +42,7 @@ type Service struct {
 	lastAI        map[string]time.Time
 }
 
-func NewService(cfg config.Config, store *pgstore.Store, aiClient AIClient, freeAIClient AICompleter, bbhClient *bbh.BBHClient) *Service {
+func NewService(cfg config.Config, store *pgstore.Store, aiClient AICompleter, embedClient Embedder, freeAIClient AICompleter, bbhClient *bbh.BBHClient) *Service {
 	defs := commandDefs(cfg.BotUserID)
 	commands := make([]compiledCommand, 0, len(defs))
 	commandMap := make(map[commandKey]compiledCommand, len(defs))
@@ -50,6 +50,7 @@ func NewService(cfg config.Config, store *pgstore.Store, aiClient AIClient, free
 		cfg:           cfg,
 		store:         store,
 		aiClient:      aiClient,
+		embedClient:   embedClient,
 		freeAIClient:  freeAIClient,
 		bbhClient:     bbhClient,
 		httpClient:    httpclient.NewClient(15 * time.Second),
@@ -74,7 +75,7 @@ func NewService(cfg config.Config, store *pgstore.Store, aiClient AIClient, free
 	}
 	service.commands = commands
 	service.commandMap = commandMap
-	if service.store != nil && service.aiClient != nil {
+	if service.store != nil && service.embedClient != nil {
 		go service.runMemoryBatchLoop()
 	}
 	return service

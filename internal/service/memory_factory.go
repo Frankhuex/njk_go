@@ -46,7 +46,7 @@ type memoryBackfillStateStore struct {
 }
 
 func (s *Service) RunMemoryBackfill(ctx context.Context) error {
-	if s == nil || s.store == nil || s.aiClient == nil {
+	if s == nil || s.store == nil || s.freeAIClient == nil || s.embedClient == nil {
 		return fmt.Errorf("memory backfill dependencies not available")
 	}
 

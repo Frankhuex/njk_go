@@ -64,7 +64,11 @@
   - `API_KEY`
   - `BASE_URL`
   - `MODEL_NAME`
+  - `EMBED_API_KEY`
+  - `EMBED_BASE_URL`
   - `EMBED_MODEL_NAME`
+  - `FREE_MODEL_API_KEY`
+  - `FREE_MODEL_BASE_URL`
   - `FREE_MODEL_NAME`
 - 服务相关
   - `WS_ADDR`

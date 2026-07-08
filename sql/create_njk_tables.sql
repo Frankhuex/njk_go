@@ -204,7 +204,7 @@ CREATE TABLE IF NOT EXISTS memory_impression (
     message_id VARCHAR(30) NULL REFERENCES message(message_id) ON DELETE SET NULL,
     content TEXT NOT NULL,
     content_hash VARCHAR(32) NOT NULL,
-    embedding VECTOR(1024) NOT NULL,
+    embedding VECTOR(768) NOT NULL,
     confidence REAL NOT NULL DEFAULT 0,
     version INTEGER NOT NULL DEFAULT 1,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,

@@ -57,7 +57,7 @@ func (s *Service) rememberBotReply(ctx context.Context, source *memorySource) {
 }
 
 func (s *Service) processMemoryBatch(ctx context.Context, batch pendingMemoryBatch) {
-	if s == nil || s.store == nil || s.aiClient == nil {
+	if s == nil || s.store == nil || s.freeAIClient == nil || s.embedClient == nil {
 		log.Printf("【记忆批处理跳过】bucket=%s reason=dependency_nil", batch.Key)
 		return
 	}
@@ -109,7 +109,7 @@ func (s *Service) processMemoryBatch(ctx context.Context, batch pendingMemoryBat
 	}
 
 	log.Printf("【记忆向量生成开始】group=%s message=%s candidates=%d", source.GroupID, source.MessageID, len(filtered))
-	embeddings, err := s.aiClient.EmbedBatch(ctx, texts)
+	embeddings, err := s.embedClient.EmbedBatch(ctx, texts)
 	if err != nil {
 		log.Printf("【记忆向量生成失败】group=%s message=%s err=%v", source.GroupID, source.MessageID, err)
 		return
@@ -139,7 +139,7 @@ func (s *Service) processMemoryBatch(ctx context.Context, batch pendingMemoryBat
 }
 
 func (s *Service) extractMemoryCandidates(ctx context.Context, source memorySource) ([]memoryCandidate, error) {
-	if s == nil || s.aiClient == nil {
+	if s == nil || s.freeAIClient == nil {
 		return nil, nil
 	}
 
@@ -160,7 +160,7 @@ func (s *Service) extractMemoryCandidates(ctx context.Context, source memorySour
 		source.Content,
 		recentText,
 	)
-	result, err := s.aiClient.Complete(ctx, memoryExtractionSystemPrompt, userPrompt, nil)
+	result, err := s.freeAIClient.Complete(ctx, memoryExtractionSystemPrompt, userPrompt, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func (s *Service) saveImpressionMemory(ctx context.Context, source memorySource,
 }
 
 func (s *Service) BuildMemoryContext(ctx context.Context, groupID string, userID string, queryText string) (string, error) {
-	if s == nil || s.store == nil || s.aiClient == nil {
+	if s == nil || s.store == nil || s.embedClient == nil {
 		log.Printf("【记忆检索跳过】group=%s user=%s reason=dependency_nil", groupID, userID)
 		return "", nil
 	}
@@ -299,7 +299,7 @@ func (s *Service) BuildMemoryContext(ctx context.Context, groupID string, userID
 		return "", nil
 	}
 
-	embedding, err := s.aiClient.Embed(ctx, queryText)
+	embedding, err := s.embedClient.Embed(ctx, queryText)
 	if err != nil {
 		return "", err
 	}
@@ -332,12 +332,13 @@ func (s *Service) BuildMemoryContext(ctx context.Context, groupID string, userID
 	}
 	block := formatMemoryContext(facts, impressions)
 	if block != "" {
-		log.Printf("【记忆检索成功】group=%s user=%s facts=%d impressions=%d query=%q",
+		log.Printf("【记忆检索成功】group=%s user=%s facts=%d impressions=%d query=%q recalled=%s",
 			groupID,
 			userID,
 			len(facts),
 			len(impressions),
 			queryText,
+			block,
 		)
 	} else {
 		log.Printf("【记忆检索为空】group=%s user=%s query=%q", groupID, userID, queryText)

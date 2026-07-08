@@ -24,11 +24,21 @@ func main() {
 		return
 	}
 
+	freeModelBaseURL := cfg.FreeModelBaseURL
+	if freeModelBaseURL == "" {
+		freeModelBaseURL = cfg.BaseURL
+	}
+	freeModelAPIKey := cfg.FreeModelAPIKey
+	if freeModelAPIKey == "" {
+		freeModelAPIKey = cfg.APIKey
+	}
+
 	botService := service.NewService(
 		cfg,
 		store,
-		ai.NewClient(cfg.BaseURL, cfg.APIKey, cfg.ModelName, cfg.EmbedModelName),
-		ai.NewClient(cfg.BaseURL, cfg.APIKey, cfg.FreeModelName, cfg.EmbedModelName),
+		ai.NewClient(cfg.BaseURL, cfg.APIKey, cfg.ModelName),
+		ai.NewClient(cfg.EmbedBaseURL, cfg.EmbedAPIKey, cfg.EmbedModelName),
+		ai.NewClient(freeModelBaseURL, freeModelAPIKey, cfg.FreeModelName),
 		bbh.NewClient(cfg.BBHBaseURL),
 	)
 
