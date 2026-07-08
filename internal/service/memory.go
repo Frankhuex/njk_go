@@ -27,13 +27,14 @@ const (
 )
 
 type memorySource struct {
-	GroupID    string
-	UserID     string
-	MessageID  string
-	Content    string
-	ActorName  string
-	IsBotReply bool
-	QueuedAt   time.Time
+	GroupID     string
+	UserID      string
+	MessageID   string
+	Content     string
+	ContextText string
+	ActorName   string
+	IsBotReply  bool
+	QueuedAt    time.Time
 }
 
 type memoryExtractionResult struct {
@@ -142,11 +143,14 @@ func (s *Service) extractMemoryCandidates(ctx context.Context, source memorySour
 		return nil, nil
 	}
 
-	recent, err := s.store.RecentMessages(ctx, source.GroupID, 6)
-	if err != nil {
-		return nil, err
+	recentText := strings.TrimSpace(source.ContextText)
+	if recentText == "" {
+		recent, err := s.store.RecentMessages(ctx, source.GroupID, 6)
+		if err != nil {
+			return nil, err
+		}
+		recentText = strings.Join(formatStoredMessages(recent), "\n")
 	}
-	recentText := strings.Join(formatStoredMessages(recent), "\n")
 	userPrompt := fmt.Sprintf("当前消息来源信息：\n- group_id: %s\n- user_id: %s\n- actor_name: %s\n- is_bot_reply: %t\n- message_id: %s\n\n当前消息内容：\n%s\n\n最近消息窗口：\n%s\n\n请输出 JSON。",
 		source.GroupID,
 		source.UserID,
@@ -443,6 +447,7 @@ func aggregateMemorySources(items []memorySource) memorySource {
 		last.UserID = ""
 	}
 	last.Content = strings.Join(parts, "\n")
+	last.ContextText = last.Content
 	return last
 }
 

@@ -21,6 +21,10 @@
   - 业务编排核心
 - `cmd/server/`
   - 在线服务入口
+- `cmd/memory-factory/`
+  - 离线记忆生产入口
+- `cmd/gen-gorm/`
+  - gorm/gen 代码生成入口
 - `internal/handler/napcat/`
   - NapCat 事件入口与发送执行
 - `internal/client/pgstore/`
@@ -60,6 +64,7 @@
   - `API_KEY`
   - `BASE_URL`
   - `MODEL_NAME`
+  - `EMBED_MODEL_NAME`
   - `FREE_MODEL_NAME`
 - 服务相关
   - `WS_ADDR`
@@ -83,6 +88,29 @@ sh run.sh
 ```bash
 go run ./cmd/server
 ```
+
+## 离线记忆生产
+
+### 启动方式
+
+```bash
+sh run.sh --memory
+```
+
+脚本会执行：
+
+```bash
+go run ./cmd/memory-factory
+```
+
+### 当前行为
+
+- 首次运行默认从每群最早消息开始
+- 本次运行上界固定为启动时刻
+- 每群一个 goroutine
+- 每分钟每群处理最多 100 条消息
+- 运行状态保存在 `runtime/memory-backfill/state.json`
+- 归档历史保存在 `runtime/memory-backfill/history/`
 
 ### 手动运行
 
@@ -162,6 +190,12 @@ go test ./...
 
 ```bash
 sh run.sh
+```
+
+如需离线补生产旧记忆，可单独执行：
+
+```bash
+sh run.sh --memory
 ```
 
 ## 当前启动链路

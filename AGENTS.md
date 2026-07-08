@@ -31,6 +31,15 @@
   - 初始化 `pgstore.Store`
   - 构造 `service.Service`
   - 启动 WebSocket 服务
+- `cmd/memory-factory/main.go`
+  - 读取配置
+  - 初始化 `pgstore.Store`
+  - 构造 `service.Service`
+  - 执行离线记忆生产任务
+- `cmd/gen-gorm/main.go`
+  - 读取配置
+  - 连接数据库
+  - 生成 `internal/dal/model` 与 `internal/dal/query`
 
 ### 核心业务
 
@@ -302,6 +311,7 @@ NapCat 入站 JSON 的处理流程：
 - `API_KEY`
 - `BASE_URL`
 - `MODEL_NAME`
+- `EMBED_MODEL_NAME`
 - `FREE_MODEL_NAME`
 - `BBH_BASE_URL`
 - `MY_URL`
@@ -338,6 +348,7 @@ NapCat 入站 JSON 的处理流程：
 
 - 当前启动脚本是 `run.sh`
 - 不是 `run_ws_server.sh`
+- 离线记忆生产通过 `sh run.sh --memory` 启动
 
 ## 常见改动导航
 

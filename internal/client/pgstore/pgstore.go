@@ -352,6 +352,55 @@ func (s *Store) MessagesSince(ctx context.Context, groupID string, start time.Ti
 	return rows, err
 }
 
+func (s *Store) GroupIDsWithMessages(ctx context.Context) ([]string, error) {
+	var groupIDs []string
+	err := s.db.WithContext(ctx).
+		Table("message").
+		Distinct("group_id").
+		Where("group_id IS NOT NULL AND group_id <> ''").
+		Order("group_id ASC").
+		Pluck("group_id", &groupIDs).Error
+	return groupIDs, err
+}
+
+func (s *Store) EarliestGroupMessageTime(ctx context.Context, groupID string) (time.Time, error) {
+	type row struct {
+		Time time.Time `gorm:"column:time"`
+	}
+	var result row
+	err := s.db.WithContext(ctx).
+		Table("message").
+		Select("time").
+		Where("group_id = ?", groupID).
+		Order("time ASC, message_id ASC").
+		Limit(1).
+		Scan(&result).Error
+	return result.Time, err
+}
+
+func (s *Store) HistoricalMessagesBatch(ctx context.Context, groupID string, afterTime *time.Time, afterMessageID string, endAt time.Time, limit int) ([]StoredMessage, error) {
+	if groupID == "" || limit <= 0 {
+		return nil, nil
+	}
+
+	query := s.db.WithContext(ctx).
+		Table(`message AS m`).
+		Select(`m.message_id, m.time, COALESCE(m.sender_id, '') AS sender_id, COALESCE(u.nickname, '') AS nickname, COALESCE(m.card, '') AS card, COALESCE(m.text, '') AS text, COALESCE(m.raw_message, '') AS raw_message, COALESCE(m.raw_json::text, '') AS raw_json`).
+		Joins(`LEFT JOIN "user" u ON m.sender_id = u.user_id`).
+		Where("m.group_id = ? AND m.time <= ?", groupID, endAt)
+
+	if afterTime != nil && !afterTime.IsZero() {
+		query = query.Where("(m.time > ?) OR (m.time = ? AND m.message_id > ?)", *afterTime, *afterTime, afterMessageID)
+	}
+
+	var rows []StoredMessage
+	err := query.
+		Order("m.time ASC, m.message_id ASC").
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, err
+}
+
 func (s *Store) GroupImageCandidates(ctx context.Context, groupID string, excludeImageID int32, excludeMessageID string) ([]StoredImage, error) {
 	var rows []StoredImage
 	err := s.db.WithContext(ctx).

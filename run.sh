@@ -4,6 +4,18 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
+APP_MODE="server"
+if [[ "${1:-}" == "--memory" ]]; then
+  APP_MODE="memory"
+  shift
+fi
+
+if [[ "$#" -gt 0 ]]; then
+  echo "[ERROR] 不支持的参数: $*"
+  echo "[ERROR] 用法: sh run.sh [--memory]"
+  exit 1
+fi
+
 find_go() {
   local candidates=(
     "go"
@@ -47,5 +59,10 @@ fi
 
 echo "[INFO] 使用 Go: $GO_BIN"
 "$GO_BIN" version
+if [[ "$APP_MODE" == "memory" ]]; then
+  echo "[INFO] 启动记忆生产入口: ./cmd/memory-factory"
+  exec "$GO_BIN" run ./cmd/memory-factory
+fi
+
 echo "[INFO] 启动 WebSocket 服务入口: ./cmd/server"
 exec "$GO_BIN" run ./cmd/server

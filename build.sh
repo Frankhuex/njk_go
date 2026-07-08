@@ -4,6 +4,18 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
+APP_MODE="server"
+if [[ "${1:-}" == "--memory" ]]; then
+  APP_MODE="memory"
+  shift
+fi
+
+if [[ "$#" -gt 0 ]]; then
+  echo "[ERROR] 不支持的参数: $*"
+  echo "[ERROR] 用法: sh build.sh [--memory]"
+  exit 1
+fi
+
 find_go() {
   local candidates=(
     "go"
@@ -49,15 +61,20 @@ TARGET_OS="${TARGET_OS:-linux}"
 TARGET_ARCH="${TARGET_ARCH:-amd64}"
 OUTPUT_DIR="$ROOT_DIR/build"
 OUTPUT_NAME="njk_go-${TARGET_OS}-${TARGET_ARCH}"
+BUILD_TARGET="./cmd/server"
+if [[ "$APP_MODE" == "memory" ]]; then
+  OUTPUT_NAME="memory_factory-${TARGET_OS}-${TARGET_ARCH}"
+  BUILD_TARGET="./cmd/memory-factory"
+fi
 OUTPUT_PATH="$OUTPUT_DIR/$OUTPUT_NAME"
 
 mkdir -p "$OUTPUT_DIR"
 
 echo "[INFO] 使用 Go: $GO_BIN"
 "$GO_BIN" version
-echo "[INFO] 开始编译 $TARGET_OS/$TARGET_ARCH"
+echo "[INFO] 开始编译 $TARGET_OS/$TARGET_ARCH mode=$APP_MODE target=$BUILD_TARGET"
 
 CGO_ENABLED=0 GOOS="$TARGET_OS" GOARCH="$TARGET_ARCH" \
-  "$GO_BIN" build -o "$OUTPUT_PATH" ./cmd/server
+  "$GO_BIN" build -o "$OUTPUT_PATH" "$BUILD_TARGET"
 
 echo "[INFO] 编译完成: $OUTPUT_PATH"
