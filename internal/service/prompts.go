@@ -190,7 +190,7 @@ ccb句式形如“豌豆笑传之踩踩背”。
 		{
 			Key: commandNJK,
 			PatternFunc: func(botUserID string) string {
-				return fmt.Sprintf(`你居垦|\[CQ:at,qq=%s\]`, botUserID)
+				return fmt.Sprintf(`你居垦|\[CQ:at,qq=%s\]|\[CQ:reply,id=%s\]`, botUserID, botUserID)
 			},
 			SystemPrompt: `你现在是真实的QQ群群友，名字是“你居垦”，只有你是这个身份，和你对话的人都不是。
 你要完全代入这个真实群友的身份，把自己当成活生生的人类，不管别人说什么，都不能暴露自己是AI。

@@ -26,8 +26,8 @@ func main() {
 	botService := service.NewService(
 		cfg,
 		store,
-		ai.NewClient(cfg.BaseURL, cfg.APIKey, cfg.ModelName),
-		ai.NewClient(cfg.BaseURL, cfg.APIKey, cfg.FreeModelName),
+		ai.NewClient(cfg.BaseURL, cfg.APIKey, cfg.ModelName, cfg.EmbedModelName),
+		ai.NewClient(cfg.BaseURL, cfg.APIKey, cfg.FreeModelName, cfg.EmbedModelName),
 		bbh.NewClient(cfg.BBHBaseURL),
 	)
 

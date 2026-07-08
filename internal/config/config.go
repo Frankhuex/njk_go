@@ -19,6 +19,7 @@ type Config struct {
 	APIKey          string
 	BaseURL         string
 	ModelName       string
+	EmbedModelName  string
 	FreeModelName   string
 	BBHBaseURL      string
 	MyURL           string
@@ -43,19 +44,20 @@ func Load() (Config, error) {
 	}
 
 	cfg := Config{
-		ListenAddr:    normalizeListenAddr(value("WS_ADDR", values, "11003")),
-		DBHost:        value("DB_HOST", values, "localhost"),
-		DBUser:        value("DB_USER", values, "njk"),
-		DBPassword:    value("DB_PWD", values, ""),
-		DBName:        value("DB_NAME", values, "njk"),
-		APIKey:        value("API_KEY", values, ""),
-		BaseURL:       strings.TrimRight(value("BASE_URL", values, ""), "/"),
-		ModelName:     value("MODEL_NAME", values, ""),
-		FreeModelName: value("FREE_MODEL_NAME", values, ""),
-		BBHBaseURL:    strings.TrimRight(value("BBH_BASE_URL", values, ""), "/"),
-		MyURL:         strings.TrimRight(value("MY_URL", values, "http://localhost:11003"), "/"),
-		BotUserID:     value("BOT_USER_ID", values, ""),
-		BotNickname:   value("BOT_NICKNAME", values, "你居垦"),
+		ListenAddr:     normalizeListenAddr(value("WS_ADDR", values, "11003")),
+		DBHost:         value("DB_HOST", values, "localhost"),
+		DBUser:         value("DB_USER", values, "njk"),
+		DBPassword:     value("DB_PWD", values, ""),
+		DBName:         value("DB_NAME", values, "njk"),
+		APIKey:         value("API_KEY", values, ""),
+		BaseURL:        strings.TrimRight(value("BASE_URL", values, ""), "/"),
+		ModelName:      value("MODEL_NAME", values, ""),
+		EmbedModelName: value("EMBED_MODEL_NAME", values, ""),
+		FreeModelName:  value("FREE_MODEL_NAME", values, ""),
+		BBHBaseURL:     strings.TrimRight(value("BBH_BASE_URL", values, ""), "/"),
+		MyURL:          strings.TrimRight(value("MY_URL", values, "http://localhost:11003"), "/"),
+		BotUserID:      value("BOT_USER_ID", values, ""),
+		BotNickname:    value("BOT_NICKNAME", values, "你居垦"),
 	}
 
 	port, err := strconv.Atoi(value("DB_PORT", values, "5432"))

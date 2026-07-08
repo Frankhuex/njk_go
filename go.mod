@@ -14,6 +14,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
+	github.com/pgvector/pgvector-go v0.4.0 // indirect
 	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/image v0.43.0 // indirect
 	golang.org/x/mod v0.36.0 // indirect

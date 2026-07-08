@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"njk_go/internal/client/pgstore"
-	"njk_go/internal/napcat"
 	"njk_go/internal/util/urand"
 	"njk_go/internal/util/utext"
 	"njk_go/internal/util/utime"
@@ -29,44 +29,50 @@ func (s *Service) handleAIPromptCommand(ctx context.Context, groupID string, mat
 	return simpleOutbound(groupID, result), nil
 }
 
-func (s *Service) handleAICommand(ctx context.Context, groupID string, match CommandMatch) (*OutboundAction, error) {
+func (s *Service) handleAICommand(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
 	count, _ := strconv.Atoi(match.Groups[1])
-	history, err := s.store.RecentMessages(ctx, groupID, count)
+	history, err := s.store.RecentMessages(ctx, cmdCtx.GroupID, count)
 	if err != nil {
 		return nil, err
 	}
 	if len(history) == 0 {
-		return insufficientHistory(groupID), nil
+		return insufficientHistory(cmdCtx.GroupID), nil
 	}
-	result, err := s.aiClient.Complete(ctx, match.Command.SystemPrompt, fmt.Sprintf("%v", formatStoredMessages(history)), nil)
+	historyPrompt := fmt.Sprintf("%v", formatStoredMessages(history))
+	queryText := strings.Join(formatStoredMessages(history), "\n")
+	historyPrompt = s.enrichPromptWithMemory(ctx, cmdCtx.GroupID, cmdCtx.SenderID, queryText, historyPrompt)
+	result, err := s.aiClient.Complete(ctx, match.Command.SystemPrompt, historyPrompt, nil)
 	if err != nil {
 		return nil, err
 	}
-	s.setLastAI(groupID, history[0].Time)
-	return savedReplyOutbound(groupID, history[0].MessageID, result), nil
+	s.setLastAI(cmdCtx.GroupID, history[0].Time)
+	return savedReplyOutbound(cmdCtx.GroupID, history[0].MessageID, result), nil
 }
 
-func (s *Service) handleAICCommand(ctx context.Context, groupID string) (*OutboundAction, error) {
-	start, ok := s.getLastAI(groupID)
+func (s *Service) handleAICCommand(ctx context.Context, cmdCtx CommandContext) (*OutboundAction, error) {
+	start, ok := s.getLastAI(cmdCtx.GroupID)
 	if !ok {
-		return simpleOutbound(groupID, "请先发起一次「.ai后接数字」"), nil
+		return simpleOutbound(cmdCtx.GroupID, "请先发起一次「.ai后接数字」"), nil
 	}
-	history, err := s.store.MessagesSince(ctx, groupID, start)
+	history, err := s.store.MessagesSince(ctx, cmdCtx.GroupID, start)
 	if err != nil {
 		return nil, err
 	}
 	if len(history) == 0 {
-		return insufficientHistory(groupID), nil
+		return insufficientHistory(cmdCtx.GroupID), nil
 	}
 	systemPrompt, err := s.systemPrompt(commandAI)
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.aiClient.Complete(ctx, systemPrompt, fmt.Sprintf("%v", formatStoredMessages(history)), nil)
+	historyPrompt := fmt.Sprintf("%v", formatStoredMessages(history))
+	queryText := strings.Join(formatStoredMessages(history), "\n")
+	historyPrompt = s.enrichPromptWithMemory(ctx, cmdCtx.GroupID, cmdCtx.SenderID, queryText, historyPrompt)
+	result, err := s.aiClient.Complete(ctx, systemPrompt, historyPrompt, nil)
 	if err != nil {
 		return nil, err
 	}
-	return savedReplyOutbound(groupID, history[0].MessageID, result), nil
+	return savedReplyOutbound(cmdCtx.GroupID, history[0].MessageID, result), nil
 }
 
 func (s *Service) handleReportCommand(ctx context.Context, groupID string, match CommandMatch) (*OutboundAction, error) {
@@ -78,8 +84,8 @@ func (s *Service) handleReportCommand(ctx context.Context, groupID string, match
 	return simpleOutbound(groupID, formatReport(stats, dayNum, 10)), nil
 }
 
-func (s *Service) GenerateNJKReply(ctx context.Context, event *napcat.GroupMessageEvent, groupID string) (*OutboundAction, error) {
-	history, err := s.historyStrings(ctx, groupID, urand.Range(10, 30))
+func (s *Service) GenerateNJKReply(ctx context.Context, cmdCtx CommandContext) (*OutboundAction, error) {
+	history, err := s.historyStrings(ctx, cmdCtx.GroupID, urand.Range(10, 30))
 	if err != nil {
 		return nil, err
 	}
@@ -92,9 +98,15 @@ func (s *Service) GenerateNJKReply(ctx context.Context, event *napcat.GroupMessa
 	if err != nil {
 		return nil, err
 	}
+	historyPrompt := fmt.Sprintf("%v", history)
+	queryText := strings.TrimSpace(cmdCtx.RawMessage)
+	if queryText == "" {
+		queryText = strings.Join(history, "\n")
+	}
+	historyPrompt = s.enrichPromptWithMemory(ctx, cmdCtx.GroupID, cmdCtx.SenderID, queryText, historyPrompt)
 	for i := 0; i < 5; i++ {
 		temperature := 0.8 + urand.Float64()*0.1
-		candidate, err := s.aiClient.Complete(ctx, systemPrompt, fmt.Sprintf("%v", history), &temperature)
+		candidate, err := s.aiClient.Complete(ctx, systemPrompt, historyPrompt, &temperature)
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +119,7 @@ func (s *Service) GenerateNJKReply(ctx context.Context, event *napcat.GroupMessa
 	if result == "" {
 		return nil, nil
 	}
-	return &OutboundAction{GroupID: groupID, Message: result, ShouldSave: true}, nil
+	return &OutboundAction{GroupID: cmdCtx.GroupID, Message: result, ShouldSave: true}, nil
 }
 
 func (s *Service) historyStrings(ctx context.Context, groupID string, count int) ([]string, error) {

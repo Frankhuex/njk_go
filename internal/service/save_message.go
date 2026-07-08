@@ -103,6 +103,14 @@ func (s *Service) SaveIncomingMessageAndCheckImages(ctx context.Context, event *
 		}
 	}
 
+	s.rememberIncomingMessage(ctx, &memorySource{
+		GroupID:   groupID,
+		UserID:    senderID,
+		MessageID: messageID,
+		Content:   firstNonEmpty(event.RawMessage, messageText),
+		ActorName: firstNonEmpty(event.Sender.Card, event.Sender.Nickname, senderID),
+	})
+
 	duplicates := []DuplicateImage{}
 	for _, url := range imageURLs {
 		duplicate, err := s.SaveAndCheckDuplicate(ctx, groupID, url, messageID)
@@ -135,7 +143,7 @@ func (s *Service) saveSelfMessage(ctx context.Context, pending *pendingMessage, 
 	}
 	rawJSON := string(rawJSONBytes)
 
-	return s.store.SaveMessage(ctx, &model.Message{
+	record := &model.Message{
 		MessageID:  messageID,
 		Time:       pending.SentAt,
 		SenderID:   &botUserID,
@@ -143,5 +151,18 @@ func (s *Service) saveSelfMessage(ctx context.Context, pending *pendingMessage, 
 		Text:       &text,
 		RawJSON:    &rawJSON,
 		RawMessage: &text,
+	}
+	if err := s.store.SaveMessage(ctx, record); err != nil {
+		return err
+	}
+	log.Printf("【bot回复入库成功】group=%s message=%s should_save=%t content=%q", groupID, messageID, pending.ShouldSave, text)
+	s.rememberBotReply(ctx, &memorySource{
+		GroupID:    groupID,
+		UserID:     botUserID,
+		MessageID:  messageID,
+		Content:    text,
+		ActorName:  s.cfg.BotNickname,
+		IsBotReply: true,
 	})
+	return nil
 }

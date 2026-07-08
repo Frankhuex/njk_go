@@ -22,12 +22,20 @@ func main() {
 	}
 
 	g := gen.NewGenerator(gen.Config{
-		OutPath:       "./internal/query",
-		ModelPkgPath:  "./internal/model",
+		OutPath:       "./internal/dal/query",
+		ModelPkgPath:  "./internal/dal/model",
 		Mode:          gen.WithDefaultQuery | gen.WithQueryInterface,
 		FieldNullable: true,
 	})
+	g.WithImportPkgPath("github.com/pgvector/pgvector-go")
+	g.WithDataTypeMap(map[string]func(columnType gorm.ColumnType) string{
+		"USER-DEFINED": func(columnType gorm.ColumnType) string {
+			return "pgvector.Vector"
+		},
+	})
 	g.UseDB(db)
-	g.ApplyBasic(g.GenerateAllTable()...)
+	g.ApplyBasic(g.GenerateAllTable(
+		gen.FieldType("embedding", "pgvector.Vector"),
+	)...)
 	g.Execute()
 }

@@ -16,19 +16,21 @@ import (
 )
 
 var (
-	Q            = new(Query)
-	AtUser       *atUser
-	EmojiLike    *emojiLike
-	Face         *face
-	Group        *group
-	Image        *image
-	ImgWhitelist *imgWhitelist
-	Message      *message
-	MsgTopic     *msgTopic
-	MsgWord      *msgWord
-	Topic        *topic
-	User         *user
-	Word         *word
+	Q                = new(Query)
+	AtUser           *atUser
+	EmojiLike        *emojiLike
+	Face             *face
+	Group            *group
+	Image            *image
+	ImgWhitelist     *imgWhitelist
+	MemoryFact       *memoryFact
+	MemoryImpression *memoryImpression
+	Message          *message
+	MsgTopic         *msgTopic
+	MsgWord          *msgWord
+	Topic            *topic
+	User             *user
+	Word             *word
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
@@ -39,6 +41,8 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Group = &Q.Group
 	Image = &Q.Image
 	ImgWhitelist = &Q.ImgWhitelist
+	MemoryFact = &Q.MemoryFact
+	MemoryImpression = &Q.MemoryImpression
 	Message = &Q.Message
 	MsgTopic = &Q.MsgTopic
 	MsgWord = &Q.MsgWord
@@ -49,56 +53,62 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:           db,
-		AtUser:       newAtUser(db, opts...),
-		EmojiLike:    newEmojiLike(db, opts...),
-		Face:         newFace(db, opts...),
-		Group:        newGroup(db, opts...),
-		Image:        newImage(db, opts...),
-		ImgWhitelist: newImgWhitelist(db, opts...),
-		Message:      newMessage(db, opts...),
-		MsgTopic:     newMsgTopic(db, opts...),
-		MsgWord:      newMsgWord(db, opts...),
-		Topic:        newTopic(db, opts...),
-		User:         newUser(db, opts...),
-		Word:         newWord(db, opts...),
+		db:               db,
+		AtUser:           newAtUser(db, opts...),
+		EmojiLike:        newEmojiLike(db, opts...),
+		Face:             newFace(db, opts...),
+		Group:            newGroup(db, opts...),
+		Image:            newImage(db, opts...),
+		ImgWhitelist:     newImgWhitelist(db, opts...),
+		MemoryFact:       newMemoryFact(db, opts...),
+		MemoryImpression: newMemoryImpression(db, opts...),
+		Message:          newMessage(db, opts...),
+		MsgTopic:         newMsgTopic(db, opts...),
+		MsgWord:          newMsgWord(db, opts...),
+		Topic:            newTopic(db, opts...),
+		User:             newUser(db, opts...),
+		Word:             newWord(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	AtUser       atUser
-	EmojiLike    emojiLike
-	Face         face
-	Group        group
-	Image        image
-	ImgWhitelist imgWhitelist
-	Message      message
-	MsgTopic     msgTopic
-	MsgWord      msgWord
-	Topic        topic
-	User         user
-	Word         word
+	AtUser           atUser
+	EmojiLike        emojiLike
+	Face             face
+	Group            group
+	Image            image
+	ImgWhitelist     imgWhitelist
+	MemoryFact       memoryFact
+	MemoryImpression memoryImpression
+	Message          message
+	MsgTopic         msgTopic
+	MsgWord          msgWord
+	Topic            topic
+	User             user
+	Word             word
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:           db,
-		AtUser:       q.AtUser.clone(db),
-		EmojiLike:    q.EmojiLike.clone(db),
-		Face:         q.Face.clone(db),
-		Group:        q.Group.clone(db),
-		Image:        q.Image.clone(db),
-		ImgWhitelist: q.ImgWhitelist.clone(db),
-		Message:      q.Message.clone(db),
-		MsgTopic:     q.MsgTopic.clone(db),
-		MsgWord:      q.MsgWord.clone(db),
-		Topic:        q.Topic.clone(db),
-		User:         q.User.clone(db),
-		Word:         q.Word.clone(db),
+		db:               db,
+		AtUser:           q.AtUser.clone(db),
+		EmojiLike:        q.EmojiLike.clone(db),
+		Face:             q.Face.clone(db),
+		Group:            q.Group.clone(db),
+		Image:            q.Image.clone(db),
+		ImgWhitelist:     q.ImgWhitelist.clone(db),
+		MemoryFact:       q.MemoryFact.clone(db),
+		MemoryImpression: q.MemoryImpression.clone(db),
+		Message:          q.Message.clone(db),
+		MsgTopic:         q.MsgTopic.clone(db),
+		MsgWord:          q.MsgWord.clone(db),
+		Topic:            q.Topic.clone(db),
+		User:             q.User.clone(db),
+		Word:             q.Word.clone(db),
 	}
 }
 
@@ -112,51 +122,57 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:           db,
-		AtUser:       q.AtUser.replaceDB(db),
-		EmojiLike:    q.EmojiLike.replaceDB(db),
-		Face:         q.Face.replaceDB(db),
-		Group:        q.Group.replaceDB(db),
-		Image:        q.Image.replaceDB(db),
-		ImgWhitelist: q.ImgWhitelist.replaceDB(db),
-		Message:      q.Message.replaceDB(db),
-		MsgTopic:     q.MsgTopic.replaceDB(db),
-		MsgWord:      q.MsgWord.replaceDB(db),
-		Topic:        q.Topic.replaceDB(db),
-		User:         q.User.replaceDB(db),
-		Word:         q.Word.replaceDB(db),
+		db:               db,
+		AtUser:           q.AtUser.replaceDB(db),
+		EmojiLike:        q.EmojiLike.replaceDB(db),
+		Face:             q.Face.replaceDB(db),
+		Group:            q.Group.replaceDB(db),
+		Image:            q.Image.replaceDB(db),
+		ImgWhitelist:     q.ImgWhitelist.replaceDB(db),
+		MemoryFact:       q.MemoryFact.replaceDB(db),
+		MemoryImpression: q.MemoryImpression.replaceDB(db),
+		Message:          q.Message.replaceDB(db),
+		MsgTopic:         q.MsgTopic.replaceDB(db),
+		MsgWord:          q.MsgWord.replaceDB(db),
+		Topic:            q.Topic.replaceDB(db),
+		User:             q.User.replaceDB(db),
+		Word:             q.Word.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	AtUser       IAtUserDo
-	EmojiLike    IEmojiLikeDo
-	Face         IFaceDo
-	Group        IGroupDo
-	Image        IImageDo
-	ImgWhitelist IImgWhitelistDo
-	Message      IMessageDo
-	MsgTopic     IMsgTopicDo
-	MsgWord      IMsgWordDo
-	Topic        ITopicDo
-	User         IUserDo
-	Word         IWordDo
+	AtUser           IAtUserDo
+	EmojiLike        IEmojiLikeDo
+	Face             IFaceDo
+	Group            IGroupDo
+	Image            IImageDo
+	ImgWhitelist     IImgWhitelistDo
+	MemoryFact       IMemoryFactDo
+	MemoryImpression IMemoryImpressionDo
+	Message          IMessageDo
+	MsgTopic         IMsgTopicDo
+	MsgWord          IMsgWordDo
+	Topic            ITopicDo
+	User             IUserDo
+	Word             IWordDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		AtUser:       q.AtUser.WithContext(ctx),
-		EmojiLike:    q.EmojiLike.WithContext(ctx),
-		Face:         q.Face.WithContext(ctx),
-		Group:        q.Group.WithContext(ctx),
-		Image:        q.Image.WithContext(ctx),
-		ImgWhitelist: q.ImgWhitelist.WithContext(ctx),
-		Message:      q.Message.WithContext(ctx),
-		MsgTopic:     q.MsgTopic.WithContext(ctx),
-		MsgWord:      q.MsgWord.WithContext(ctx),
-		Topic:        q.Topic.WithContext(ctx),
-		User:         q.User.WithContext(ctx),
-		Word:         q.Word.WithContext(ctx),
+		AtUser:           q.AtUser.WithContext(ctx),
+		EmojiLike:        q.EmojiLike.WithContext(ctx),
+		Face:             q.Face.WithContext(ctx),
+		Group:            q.Group.WithContext(ctx),
+		Image:            q.Image.WithContext(ctx),
+		ImgWhitelist:     q.ImgWhitelist.WithContext(ctx),
+		MemoryFact:       q.MemoryFact.WithContext(ctx),
+		MemoryImpression: q.MemoryImpression.WithContext(ctx),
+		Message:          q.Message.WithContext(ctx),
+		MsgTopic:         q.MsgTopic.WithContext(ctx),
+		MsgWord:          q.MsgWord.WithContext(ctx),
+		Topic:            q.Topic.WithContext(ctx),
+		User:             q.User.WithContext(ctx),
+		Word:             q.Word.WithContext(ctx),
 	}
 }
 
