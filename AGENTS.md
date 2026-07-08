@@ -14,11 +14,13 @@
 - 解析 NapCat 消息段并落库到 PostgreSQL
 - 执行正则命令体系
 - 调用 AI 接口生成回复
+- 主模型支持多模态输入，并带有逐级回退到单模态的兜底
 - 调用 BBH HTTP 服务处理 `.bbh` 相关命令
 - 对图片做 pHash 消重
 - 记录系统表情 ID 与消息表情回应
 - 提供 `.face`、`.faceid`、`.getfaceid`、`.allface` 等系统表情相关命令
 - 生成并回发对称图片
+- 提供 `.生图` 命令调用 SiliconFlow 生图接口
 
 在线服务入口是 `cmd/server/main.go`。
 
@@ -71,6 +73,9 @@
 
 - `internal/client/ai/`
   - OpenAI-compatible chat completions client
+  - 同时承载普通文本 completions、multimodal completions 与 embeddings
+- `internal/client/imagegen/`
+  - SiliconFlow 图片生成 client
 - `internal/client/bbh/`
   - BBH HTTP client
 - `internal/client/http/`
@@ -180,6 +185,7 @@ NapCat 入站 JSON 的处理流程：
   - `prompts.go`
   - `command_ai.go`
   - `command_bbh.go`
+  - `command_generate_image.go`
   - `command_face.go`
   - `command_faceid.go`
   - `command_getfaceid.go`
@@ -189,14 +195,18 @@ NapCat 入站 JSON 的处理流程：
   - `command_dice.go`
   - `command_symmetric.go`
 - 入库与表情
-  - `service_ingest.go`
-  - `face_storage.go`
+  - `save_message.go`
+  - `save_image.go`
+  - `save_face.go`
 - 图片
   - `image.go`
 - 业务辅助
-  - `helpers.go`
+  - `ai_fallback.go`
+  - `memory.go`
+  - `memory_factory.go`
+  - `memory_queue.go`
+  - `outbound.go`
   - `report.go`
-  - `state.go`
 - 装配
   - `service.go`
 
@@ -242,6 +252,7 @@ NapCat 入站 JSON 的处理流程：
   - `.getfaceid`
   - `.allface`
 - 工具类
+  - `.生图`
   - `.XdY`
   - `.对称左` / `.对称右` / `.对称上` / `.对称下`
   - `.对称左上` / `.对称右上` / `.对称左下` / `.对称右下`
@@ -410,14 +421,24 @@ NapCat 入站 JSON 的处理流程：
 
 - `internal/service/command_ai.go`
 - `internal/client/ai/ai.go`
+- `internal/service/ai_fallback.go`
 - `internal/service/prompts.go`
+
+补充说明：
+
+- 当前主模型历史消息类调用已支持多模态输入
+- 当多模态失败时，会依次降级为：
+  - 全部图片
+  - 最新一张图片
+  - 纯文本单模态
 
 ### 想改图片逻辑
 
 优先看：
 
 - `internal/service/image.go`
-- `internal/service/service_ingest.go`
+- `internal/service/command_generate_image.go`
+- `internal/client/imagegen/siliconflow.go`
 - `internal/client/http/http.go`
 - `internal/client/pgstore/pgstore.go`
 - `internal/client/imagestore/image_store.go`
@@ -448,6 +469,10 @@ NapCat 入站 JSON 的处理流程：
 ### 6. `internal/util` 现在是活跃公共层
 
 如果遇到纯函数、跨文件复用逻辑，先看是否应该落到 `internal/util/u*`
+
+### 7. `.生图` 直接回发远程 URL
+
+当前 `.生图` 返回的结果图片 URL 不会先下载到本地，而是直接复用现有发图链回发。
 
 ## 推荐阅读顺序
 

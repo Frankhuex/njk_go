@@ -7,8 +7,9 @@
 - 群消息、notice、action 回执处理
 - PostgreSQL 消息落库
 - AI 回复
+- 主模型多模态输入
 - BBH 命令
-- 图片查重与图片生成
+- 图片查重、对称图生成与 `.生图`
 - 系统表情相关命令
 
 当前在线服务入口是 `cmd/server/main.go`。
@@ -30,7 +31,9 @@
 - `internal/client/pgstore/`
   - PostgreSQL `Store`
 - `internal/client/ai/`
-  - AI client
+  - 聊天与 embedding AI client
+- `internal/client/imagegen/`
+  - SiliconFlow 生图 client
 - `internal/client/bbh/`
   - BBH client
 - `internal/client/http/`
@@ -96,6 +99,12 @@ sh run.sh
 go run ./cmd/server
 ```
 
+默认运行在线服务；如需切到离线记忆生产：
+
+```bash
+sh run.sh --memory
+```
+
 ## 离线记忆生产
 
 ### 启动方式
@@ -113,11 +122,69 @@ go run ./cmd/memory-factory
 ### 当前行为
 
 - 首次运行默认从每群最早消息开始
+- 之后默认按最新游标做增量续跑
 - 本次运行上界固定为启动时刻
 - 每群一个 goroutine
 - 每分钟每群处理最多 100 条消息
 - 运行状态保存在 `runtime/memory-backfill/state.json`
 - 归档历史保存在 `runtime/memory-backfill/history/`
+
+## 当前主要命令
+
+- AI 总结类
+  - `.概括`
+  - `.总结`
+  - `.俳句`
+  - `.无只因`
+  - `.最`
+  - `.vs`
+  - `.ccb`
+  - `.xmas`
+- 对话类
+  - `.ai`
+  - `.aic`
+  - 自动 `NJK` 回复
+- 历史/表情类
+  - `.报告`
+  - `.face`
+  - `.faceid`
+  - `.getfaceid`
+  - `.allface`
+- 图片类
+  - `.file`
+  - `.生图`
+  - `.对称左/.对称右/.对称上/.对称下`
+  - `.对称左上/.对称右上/.对称左下/.对称右下`
+- 工具类
+  - `.XdY`
+- 帮助类
+  - `.help`
+  - `.help bbh`
+- BBH 类
+  - `.bbh`
+  - `.bbh <bookID>`
+  - `.bbh <bookID> <para>`
+  - `.bbh <bookID> <left>-<right>`
+  - `.bbh <bookID> add ...`
+  - `.bbh <bookID> ai`
+
+## AI 与生图
+
+- 主模型 `aiClient`
+  - 当前支持单模态与多模态输入
+  - 历史消息类命令会自动把最近消息中的图片一并带入主模型
+  - 多模态失败时会自动降级：
+    - 全部图片
+    - 最新一张图片
+    - 纯文本
+- 记忆相关
+  - `embedClient` 负责 embedding
+  - `freeAIClient` 负责记忆分拣与相关轻量模型调用
+- 生图
+  - `.生图 n` 使用 SiliconFlow 图片生成接口
+  - 从最近 `n` 条消息中提取全部可用文本
+  - 并选取最近一张图片作为参考图
+  - 返回的远程图片 URL 直接通过现有发图链回发
 
 ### 手动运行
 
@@ -220,4 +287,5 @@ sh run.sh --memory
 - 当前数据库访问统一由 `internal/client/pgstore/pgstore.go` 提供
 - 当前 NapCat 事件由 `internal/handler/napcat/handler.go` 承接
 - 当前图片下载能力由 `internal/client/http/http.go` 提供
+- 当前图片生成能力由 `internal/client/imagegen/siliconflow.go` 提供
 - 当前通用纯函数优先沉淀到 `internal/util/u*`

@@ -30,6 +30,52 @@ func NewClient(baseURL string, apiKey string, modelName string) *AIClient {
 }
 
 func (c *AIClient) Complete(ctx context.Context, systemPrompt string, userPrompt string, temperature *float64) (string, error) {
+	messages := []chatMessage{
+		{Role: "system", Content: systemPrompt},
+		{Role: "user", Content: userPrompt},
+	}
+	return c.completeWithMessages(ctx, messages, temperature)
+}
+
+func (c *AIClient) CompleteMultimodal(ctx context.Context, systemPrompt string, text string, imageURLs []string, temperature *float64) (string, error) {
+	if c.baseURL == "" {
+		return "", fmt.Errorf("missing base url")
+	}
+	if c.modelName == "" {
+		return "", fmt.Errorf("missing model name")
+	}
+
+	parts := make([]chatContentPart, 0, 1+len(imageURLs))
+	if text = strings.TrimSpace(text); text != "" {
+		parts = append(parts, chatContentPart{
+			Type: "text",
+			Text: text,
+		})
+	}
+	for _, imageURL := range imageURLs {
+		imageURL = strings.TrimSpace(imageURL)
+		if imageURL == "" {
+			continue
+		}
+		parts = append(parts, chatContentPart{
+			Type: "image_url",
+			ImageURL: &chatImageURL{
+				URL: imageURL,
+			},
+		})
+	}
+	if len(parts) == 0 {
+		return "", fmt.Errorf("missing multimodal content")
+	}
+
+	messages := []chatMessage{
+		{Role: "system", Content: systemPrompt},
+		{Role: "user", Content: parts},
+	}
+	return c.completeWithMessages(ctx, messages, temperature)
+}
+
+func (c *AIClient) completeWithMessages(ctx context.Context, messages []chatMessage, temperature *float64) (string, error) {
 	if c.baseURL == "" {
 		return "", fmt.Errorf("missing base url")
 	}
@@ -38,17 +84,13 @@ func (c *AIClient) Complete(ctx context.Context, systemPrompt string, userPrompt
 	}
 
 	body := chatRequest{
-		Model: c.modelName,
-		Messages: []chatMessage{
-			{Role: "system", Content: systemPrompt},
-			{Role: "user", Content: userPrompt},
-		},
-		Stream: false,
+		Model:    c.modelName,
+		Messages: messages,
+		Stream:   false,
 	}
 	if temperature != nil {
 		body.Temperature = temperature
 	}
-
 	data, err := json.Marshal(body)
 	if err != nil {
 		return "", err
@@ -84,7 +126,11 @@ func (c *AIClient) Complete(ctx context.Context, systemPrompt string, userPrompt
 	if len(parsed.Choices) == 0 {
 		return "", fmt.Errorf("empty ai response")
 	}
-	return parsed.Choices[0].Message.Content, nil
+	content, ok := parsed.Choices[0].Message.Content.(string)
+	if !ok {
+		return "", fmt.Errorf("unexpected ai response content type %T", parsed.Choices[0].Message.Content)
+	}
+	return content, nil
 }
 
 type chatRequest struct {
@@ -96,7 +142,17 @@ type chatRequest struct {
 
 type chatMessage struct {
 	Role    string `json:"role"`
-	Content string `json:"content"`
+	Content any    `json:"content"`
+}
+
+type chatContentPart struct {
+	Type     string        `json:"type"`
+	Text     string        `json:"text,omitempty"`
+	ImageURL *chatImageURL `json:"image_url,omitempty"`
+}
+
+type chatImageURL struct {
+	URL string `json:"url"`
 }
 
 type chatResponse struct {

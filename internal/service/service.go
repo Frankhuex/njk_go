@@ -19,6 +19,7 @@ import (
 
 type AICompleter interface {
 	Complete(ctx context.Context, systemPrompt string, userPrompt string, temperature *float64) (string, error)
+	CompleteMultimodal(ctx context.Context, systemPrompt string, text string, imageURLs []string, temperature *float64) (string, error)
 }
 
 type Embedder interface {

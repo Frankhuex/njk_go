@@ -79,6 +79,7 @@ func buildHelpText(cfg config.Config) string {
 		fmt.Sprintf("主模型：%s", firstNonEmpty(strings.TrimSpace(cfg.ModelName), "未配置")),
 		fmt.Sprintf("记忆分拣模型：%s", firstNonEmpty(strings.TrimSpace(cfg.FreeModelName), "未配置")),
 		fmt.Sprintf("嵌入模型：%s", firstNonEmpty(strings.TrimSpace(cfg.EmbedModelName), "未配置")),
+		fmt.Sprintf("生图模型：%s", firstNonEmpty(strings.TrimSpace(cfg.ImageGenModelName), "未配置")),
 	}
 	return helpTextBase + "\n当前模型配置：\n" + strings.Join(models, "\n")
 }

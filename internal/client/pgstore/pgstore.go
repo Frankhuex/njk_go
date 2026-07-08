@@ -250,6 +250,50 @@ func (s *Store) RecentMessageImages(ctx context.Context, groupID string, limit i
 	return rows, nil
 }
 
+func (s *Store) RecentMessageAndImages(ctx context.Context, groupID string, limit int) ([]MessageWithImages, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
+	messages, err := s.RecentMessages(ctx, groupID, limit)
+	if err != nil {
+		return nil, err
+	}
+	if len(messages) == 0 {
+		return nil, nil
+	}
+
+	messageIDs := make([]string, 0, len(messages))
+	rowsByID := make(map[string]*MessageWithImages, len(messages))
+	result := make([]MessageWithImages, 0, len(messages))
+	for _, message := range messages {
+		row := MessageWithImages{Message: message}
+		result = append(result, row)
+		rowsByID[message.MessageID] = &result[len(result)-1]
+		messageIDs = append(messageIDs, message.MessageID)
+	}
+
+	var images []StoredImage
+	err = s.db.WithContext(ctx).
+		Table(`image AS i`).
+		Select(`i.id, i.message_id, i.image_hash, COALESCE(i.url, '') AS url, m.time, COALESCE(m.sender_id, '') AS sender_id, COALESCE(u.nickname, '') AS nickname, COALESCE(m.card, '') AS card`).
+		Joins(`JOIN message m ON i.message_id = m.message_id`).
+		Joins(`LEFT JOIN "user" u ON m.sender_id = u.user_id`).
+		Where("i.message_id IN ?", messageIDs).
+		Order("m.time ASC, i.id ASC").
+		Scan(&images).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, image := range images {
+		row := rowsByID[image.MessageID]
+		if row == nil {
+			continue
+		}
+		row.Images = append(row.Images, image)
+	}
+	return result, nil
+}
+
 func (s *Store) RecentFaceIDRows(ctx context.Context, groupID string, limit int) ([]GetFaceIDMessageRow, error) {
 	if limit <= 0 {
 		return nil, nil
@@ -511,6 +555,11 @@ type StoredImage struct {
 	SenderID  string    `gorm:"column:sender_id"`
 	Nickname  string    `gorm:"column:nickname"`
 	Card      string    `gorm:"column:card"`
+}
+
+type MessageWithImages struct {
+	Message StoredMessage
+	Images  []StoredImage
 }
 
 type ReportStats struct {
