@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -23,7 +22,7 @@ func (s *Service) handleAIPromptCommand(ctx context.Context, groupID string, mat
 		return insufficientHistory(groupID), nil
 	}
 	textPrompt, imageURLs := buildMultimodalPrompt(history)
-	result, err := s.completeWithMultimodalFallback(ctx, groupID, match.Command.SystemPrompt, fmt.Sprintf("%v", textPrompt), imageURLs, nil)
+	result, err := s.completeWithMultimodalFallback(ctx, groupID, match.Command.SystemPrompt, textPrompt, imageURLs, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +39,7 @@ func (s *Service) handleAICommand(ctx context.Context, cmdCtx CommandContext, ma
 		return insufficientHistory(cmdCtx.GroupID), nil
 	}
 	formattedHistory := formatStoredMessagesWithImages(history)
-	historyPrompt := fmt.Sprintf("%v", formattedHistory)
+	historyPrompt := strings.Join(formattedHistory, "\n")
 	queryText := strings.Join(formattedHistory, "\n")
 	historyPrompt = s.enrichPromptWithMemory(ctx, cmdCtx.GroupID, cmdCtx.SenderID, queryText, historyPrompt)
 	_, imageURLs := buildMultimodalPrompt(history)
@@ -68,7 +67,7 @@ func (s *Service) handleAICCommand(ctx context.Context, cmdCtx CommandContext) (
 	if err != nil {
 		return nil, err
 	}
-	historyPrompt := fmt.Sprintf("%v", formatStoredMessages(history))
+	historyPrompt := strings.Join(formatStoredMessages(history), "\n")
 	queryText := strings.Join(formatStoredMessages(history), "\n")
 	historyPrompt = s.enrichPromptWithMemory(ctx, cmdCtx.GroupID, cmdCtx.SenderID, queryText, historyPrompt)
 	imageURLs, err := s.messageImagesSince(ctx, cmdCtx.GroupID, start)
@@ -107,7 +106,7 @@ func (s *Service) GenerateNJKReply(ctx context.Context, cmdCtx CommandContext) (
 		return nil, err
 	}
 	formattedHistory := formatStoredMessagesWithImages(history)
-	historyPrompt := fmt.Sprintf("%v", formattedHistory)
+	historyPrompt := strings.Join(formattedHistory, "\n")
 	queryText := strings.TrimSpace(cmdCtx.RawMessage)
 	if queryText == "" {
 		queryText = strings.Join(formattedHistory, "\n")

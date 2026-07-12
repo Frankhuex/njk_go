@@ -36,7 +36,7 @@ func (s *Service) SaveIncomingMessageAndCheckImages(ctx context.Context, event *
 		switch segment.Type {
 		case napcat.SegmentTypeReply:
 			id := segment.Data.ID.String()
-			textParts = append(textParts, fmt.Sprintf("[CQ:reply,qq=%s]", id))
+			textParts = append(textParts, fmt.Sprintf("[CQ:reply,id=%s]", id))
 			replyID = &id
 
 		case napcat.SegmentTypeAt:

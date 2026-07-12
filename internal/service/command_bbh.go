@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -146,18 +147,20 @@ func (s *Service) handleBBHAI(ctx context.Context, bookID int) (string, error) {
 	if len(paras) < 2 {
 		return "获取前段落失败", nil
 	}
+	parasJson, err := json.Marshal(paras)
+	if err != nil {
+		log.Printf("JSON marshal error: %v", err)
+		return "", err
+	}
 
 	type aiParagraph struct {
 		Author  string `json:"author"`
 		Content string `json:"content"`
 	}
-	paraContents := make([][2]string, 0, len(paras))
-	for _, para := range paras {
-		paraContents = append(paraContents, [2]string{para.Author, para.Content})
-	}
+
 	prompt := `你将会接收到一篇正在编写中的小说的每一个段落。其中author字段含义请自行视情况判断，有时候为作者，有时候为段标题，content字段则是段落正文内容。
 现在请你理解前文，然后往下接一段。输出格式要求为json格式，一个字段"author"，一个字段"content"，字段值必须为字符串。接下来就是你将接收到的段落对象。`
-	aiResult, err := s.freeAIClient.Complete(ctx, prompt, fmt.Sprintf("%v", paraContents), nil)
+	aiResult, err := s.freeAIClient.Complete(ctx, prompt, string(parasJson), nil)
 	if err != nil {
 		return "", err
 	}
