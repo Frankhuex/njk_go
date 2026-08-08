@@ -4,7 +4,7 @@
 PORT="11003"
 SERVICE_NAME="njk_go"
 # 如果你的可执行文件不在这个脚本所在目录，请将其改为绝对路径，例如 /home/frank/njk_go/njk_go-linux-amd64-v2.1.1
-EXEC_PATH="./njk_go-linux-amd64-v2.1.1"
+EXEC_PATH="./njk_go-linux-amd64-v2.2"
 
 echo ">>> 开始重启 $SERVICE_NAME 服务..."
 
