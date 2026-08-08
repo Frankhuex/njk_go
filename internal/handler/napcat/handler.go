@@ -53,10 +53,6 @@ func (h *Handler) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 		senderID = event.UserID.String()
 	}
 	groupID := event.GroupID.String()
-	if !h.service.IsGroupAllowed(groupID) {
-		log.Printf("【忽略群消息】%s - 群:%s 不在白名单", clientAddr, groupID)
-		return
-	}
 	if h.service.IsUserBanned(senderID) {
 		log.Printf("【忽略群消息】%s - 用户:%s 在黑名单", clientAddr, senderID)
 		return

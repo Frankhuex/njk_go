@@ -81,7 +81,6 @@
   - `MY_URL`
   - `BOT_USER_ID`
   - `BOT_NICKNAME`
-  - `GROUP_IDS`
   - `BANNED_USER_IDS`
   - `BBH_BASE_URL`
 

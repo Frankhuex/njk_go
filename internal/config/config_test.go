@@ -52,7 +52,7 @@ func TestLoadIncludesDefaultBannedUserID(t *testing.T) {
 }
 
 func TestLoadUsesEmptyDefaultsForBotAndGroupConfig(t *testing.T) {
-	keys := []string{"BOT_USER_ID", "BOT_NICKNAME", "GROUP_IDS", "BANNED_USER_IDS", "WS_ADDR"}
+	keys := []string{"BOT_USER_ID", "BOT_NICKNAME", "BANNED_USER_IDS", "WS_ADDR"}
 	previous := map[string]string{}
 	for _, key := range keys {
 		previous[key] = os.Getenv(key)
@@ -82,9 +82,6 @@ func TestLoadUsesEmptyDefaultsForBotAndGroupConfig(t *testing.T) {
 	}
 	if cfg.BotNickname != "你居垦" {
 		t.Fatalf("expected default bot nickname, got: %s", cfg.BotNickname)
-	}
-	if len(cfg.AllowedGroupIDs) != 0 {
-		t.Fatal("expected empty allowed group ids")
 	}
 	if len(cfg.BannedUserIDs) != 0 {
 		t.Fatal("expected empty banned user ids")

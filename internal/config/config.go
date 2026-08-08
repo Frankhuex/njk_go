@@ -32,7 +32,6 @@ type Config struct {
 	MyURL             string
 	BotUserID         string
 	BotNickname       string
-	AllowedGroupIDs   map[string]struct{}
 	BannedUserIDs     map[string]struct{}
 }
 
@@ -79,7 +78,6 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("invalid DB_PORT: %w", err)
 	}
 	cfg.DBPort = port
-	cfg.AllowedGroupIDs = parseGroupIDs(value("GROUP_IDS", values, ""))
 	cfg.BannedUserIDs = parseIDSet(value("BANNED_USER_IDS", values, ""))
 
 	return cfg, nil
@@ -140,10 +138,6 @@ func value(key string, fileValues map[string]string, fallback string) string {
 		return fromFile
 	}
 	return fallback
-}
-
-func parseGroupIDs(raw string) map[string]struct{} {
-	return parseIDSet(raw)
 }
 
 func parseIDSet(raw string) map[string]struct{} {

@@ -34,7 +34,6 @@ func TestHandleNoticeSendsGroupMessage(t *testing.T) {
 	botService := service.NewService(config.Config{
 		BotUserID:       "1558109748",
 		BotNickname:     "你居垦",
-		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil, nil, nil)
 	handler := napcathandler.NewHandler(botService)
 	event := &napcat.NoticeEvent{
@@ -84,7 +83,6 @@ func TestHandleNoticeIgnoresOtherTarget(t *testing.T) {
 	botService := service.NewService(config.Config{
 		BotUserID:       "1558109748",
 		BotNickname:     "你居垦",
-		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil, nil, nil)
 	handler := napcathandler.NewHandler(botService)
 	event := &napcat.NoticeEvent{

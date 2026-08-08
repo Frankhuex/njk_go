@@ -13,7 +13,6 @@ func TestMatchCommandSupportsSymmetricWithoutSpace(t *testing.T) {
 	service := NewService(config.Config{
 		BotUserID:       "1558109748",
 		BotNickname:     "你居垦",
-		AllowedGroupIDs: map[string]struct{}{},
 	}, nil, nil, nil, nil, nil, nil)
 
 	match := service.MatchCommand(".对称左5")

@@ -85,14 +85,6 @@ func NewService(cfg config.Config, store *pgstore.Store, aiClient AICompleter, e
 	return service
 }
 
-func (s *Service) IsGroupAllowed(groupID string) bool {
-	if len(s.cfg.AllowedGroupIDs) == 0 {
-		return true
-	}
-	_, ok := s.cfg.AllowedGroupIDs[groupID]
-	return ok
-}
-
 func (s *Service) IsUserBanned(userID string) bool {
 	_, banned := s.cfg.BannedUserIDs[userID]
 	return banned
