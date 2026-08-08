@@ -26,6 +26,7 @@ const (
 	commandFaceID             commandKey = "face_id"
 	commandGetFaceID          commandKey = "get_face_id"
 	commandAllFace            commandKey = "all_face"
+	commandSendAllFace        commandKey = "send_all_face"
 	commandJSON               commandKey = "json"
 	commandFile               commandKey = "file"
 	commandGenerateImage      commandKey = "generate_image"
@@ -39,6 +40,7 @@ const (
 	commandSymmetricLeftDown  commandKey = "symmetric_left_down"
 	commandSymmetricRightDown commandKey = "symmetric_right_down"
 	commandHelp               commandKey = "help"
+	commandModel              commandKey = "model"
 	commandHelpBBH            commandKey = "help_bbh"
 	commandBBHPlaza           commandKey = "bbh_plaza"
 	commandBBHBook            commandKey = "bbh_book"
@@ -55,33 +57,63 @@ type commandDef struct {
 	SystemPrompt string
 }
 
-var helpTextBase = `.概括 .总结 .俳句 .无只因 .最 .vs .ccb .xmas 
-后面均需要接数字，表示结合的前面消息条数，不包含指令消息
-消息中含有你居垦三个字就会触发自动回复
-.报告 后面需要接数字，表示报告查询的天数
-.face 后面接数字，表示读取本群最近消息里的系统表情并贴到这条指令上
-.faceid 后面接数字或数字范围，表示发送对应id的系统表情，如.faceid 12或.faceid 12-15
-.getfaceid 后面接数字，表示读取本群最近消息里的系统表情id和收到过的表情回应id
-.allface 查看所有已记录系统表情id和被贴过的系统表情id
-.json 后面接数字，表示返回本群最近已保存消息的raw_json
-.file 后面接数字，表示把本群最近消息里的图片/动图作为文件发出
-.生图 后面接数字，表示从本群最近 n 条消息中取最近一条可用文本和最新一张图进行生图
-.2d6 掷2次6面骰子，支持写成 .2 d 6
-.对称左/.对称右/.对称上/.对称下 生成对应方向的半边对称图
-.对称左上/.对称右上/.对称左下/.对称右下 生成对应角来源的四象限对称图
-.help bbh 查看bbh模块讲解
-.ai 后面接数字，表示结合的前面消息条数，不包含指令消息，正常AI助手式回答
-.aic 会继续上一个.ai的话题，不包含指令消息。（总共读取=上一个.ai读取的消息+之后的全部消息）
-`
+const (
+	helpText0 = `NJKv2.2指令帮助
+注：以下指令未说明均不保存回答。
+.help n：查看第n条指令内容
+1. 你居垦人格回复
+2. AI
+3. face系列
+4. 文件工具
+5. 对称图
+6. 其他`
+	helpText1 = `1. 你居垦人格回复
+消息中含有你居垦三个字就会触发回复，平时也有一定概率回复。问答都保存。`
+	helpText2 = `2. AI
+含系统提示词：
+.概括 .总结 .俳句 .无只因 .最 .vs .ccb .xmas：
+后接数字n，AI结合前n条消息生成回答
+不含系统提示词：
+.ai n：结合前n条消息，不加系统提示词，让AI回答。
+.aic：继续上一个.ai的话题
+指令本身不保存，指令回答会保存。`
+	helpText3 = `3. face系列
+.face n：取前n条消息发出的face贴出
+.faceid x 或 .faceid x-y：将id闭区间的face同时发出与贴出
+.getfaceid n：提取前n条消息发出与被贴的face id
+.allface：所有face id`
+	helpText4 = `4. 文件工具
+.json n：打印前n条消息的segments的raw_json
+.file n：把前n条消息中的图片/动图作为文件发出`
+	helpText5 = `5. 对称图
+.对称左/.对称右/.对称上/.对称下/.对称左上/.对称右上/.对称左下/.对称右下`
+	helpText6 = `6. 其他
+.生图 n：结合前n条消息，以全部消息文本为提示词，以最新图片为参考图生图
+.xdy：掷x次y面骰子并求和
+.报告 n：生成前n天的报告
+.model：列出模型配置`
+)
 
-func buildHelpText(cfg config.Config) string {
+var (
+	helpTexts = []string{
+		helpText0,
+		helpText1,
+		helpText2,
+		helpText3,
+		helpText4,
+		helpText5,
+		helpText6,
+	}
+)
+
+func buildModelText(cfg config.Config) string {
 	models := []string{
 		fmt.Sprintf("主模型：%s", firstNonEmpty(strings.TrimSpace(cfg.ModelName), "未配置")),
 		fmt.Sprintf("记忆分拣模型：%s", firstNonEmpty(strings.TrimSpace(cfg.FreeModelName), "未配置")),
 		fmt.Sprintf("嵌入模型：%s", firstNonEmpty(strings.TrimSpace(cfg.EmbedModelName), "未配置")),
 		fmt.Sprintf("生图模型：%s", firstNonEmpty(strings.TrimSpace(cfg.ImageGenModelName), "未配置")),
 	}
-	return helpTextBase + "\n当前模型配置：\n" + strings.Join(models, "\n")
+	return "当前模型配置：\n" + strings.Join(models, "\n")
 }
 
 var helpBBHText = `bbh模块讲解：
@@ -243,6 +275,10 @@ ccb句式形如“豌豆笑传之踩踩背”。
 			Pattern: `^ *\.allface *$`,
 		},
 		{
+			Key:     commandSendAllFace,
+			Pattern: `^ *\.sendallface *$`,
+		},
+		{
 			Key:     commandJSON,
 			Pattern: `^ *\.json *(\d+) *$`,
 		},
@@ -293,6 +329,14 @@ ccb句式形如“豌豆笑传之踩踩背”。
 		{
 			Key:     commandHelp,
 			Pattern: `^ *\.help *$`,
+		},
+		{
+			Key:     commandHelp,
+			Pattern: `^ *\.help *(\d+) *$`,
+		},
+		{
+			Key:     commandModel,
+			Pattern: `^ *\.model *$`,
 		},
 		{
 			Key:     commandHelpBBH,

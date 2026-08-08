@@ -335,7 +335,6 @@ NapCat 入站 JSON 的处理流程：
 - `MY_URL`
 - `BOT_USER_ID`
 - `BOT_NICKNAME`
-- `GROUP_IDS`
 - `BANNED_USER_IDS`
 
 `.env` 模板见：

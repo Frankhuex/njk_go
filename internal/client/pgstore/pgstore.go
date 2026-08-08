@@ -368,20 +368,14 @@ func (s *Store) RecentFaceIDRows(ctx context.Context, groupID string, limit int)
 	return result, nil
 }
 
-func (s *Store) AllFaceIDs(ctx context.Context) ([]string, []string, error) {
+func (s *Store) AllFaceIDs(ctx context.Context) ([]string, error) {
 	var allFaceIDs []string
 	if err := s.db.WithContext(ctx).Raw(`SELECT face_id FROM face`).Scan(&allFaceIDs).Error; err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	uslice.SortIntStrings(allFaceIDs)
 
-	var likedFaceIDs []string
-	if err := s.db.WithContext(ctx).Raw(`SELECT DISTINCT face_id FROM emoji_like`).Scan(&likedFaceIDs).Error; err != nil {
-		return nil, nil, err
-	}
-	uslice.SortIntStrings(likedFaceIDs)
-
-	return allFaceIDs, likedFaceIDs, nil
+	return allFaceIDs, nil
 }
 
 func (s *Store) MessagesSince(ctx context.Context, groupID string, start time.Time) ([]StoredMessage, error) {
