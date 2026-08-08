@@ -88,6 +88,10 @@ func (s *Service) buildCommandHandler(key commandKey) commandHandler {
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
 			return s.handleAllFaceCommand(ctx, cmdCtx.GroupID)
 		}
+	case commandSendAllFace:
+		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
+			return s.handleSendAllFaceCommand(ctx, cmdCtx.GroupID)
+		}
 	case commandJSON:
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
 			return s.handleJSONCommand(ctx, cmdCtx.GroupID, match)

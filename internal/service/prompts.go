@@ -26,6 +26,7 @@ const (
 	commandFaceID             commandKey = "face_id"
 	commandGetFaceID          commandKey = "get_face_id"
 	commandAllFace            commandKey = "all_face"
+	commandSendAllFace        commandKey = "send_all_face"
 	commandJSON               commandKey = "json"
 	commandFile               commandKey = "file"
 	commandGenerateImage      commandKey = "generate_image"
@@ -251,6 +252,10 @@ ccb句式形如“豌豆笑传之踩踩背”。
 		{
 			Key:     commandAllFace,
 			Pattern: `^ *\.allface *$`,
+		},
+		{
+			Key:     commandSendAllFace,
+			Pattern: `^ *\.sendallface *$`,
 		},
 		{
 			Key:     commandJSON,

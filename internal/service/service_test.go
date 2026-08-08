@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -503,6 +504,36 @@ func TestFormatAllFaceIDsCompressesContiguousRanges(t *testing.T) {
 	want := "全部：1-3，5，8-9"
 	if got != want {
 		t.Fatalf("unexpected allface output: %q", got)
+	}
+}
+
+func TestBuildSendAllFaceSegments(t *testing.T) {
+	got := buildSendAllFaceSegments([]string{"1", "2"})
+	want := []napcat.MessageSegment{
+		napcat.NewTextSegment("1"),
+		napcat.NewFaceSegment("1"),
+		napcat.NewTextSegment("，"),
+		napcat.NewTextSegment("2"),
+		napcat.NewFaceSegment("2"),
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected segments: %#v", got)
+	}
+}
+
+func TestBuildSendAllFaceSegmentsEmpty(t *testing.T) {
+	if got := buildSendAllFaceSegments(nil); len(got) != 0 {
+		t.Fatalf("expected empty segments, got %#v", got)
+	}
+}
+
+func TestMatchCommandSupportsSendAllFace(t *testing.T) {
+	service := NewService(config.Config{}, nil, nil, nil, nil, nil, nil)
+	if match := service.MatchCommand(".sendallface"); match == nil || match.Command.Key != commandSendAllFace {
+		t.Fatalf("expected .sendallface to match, got=%v", match)
+	}
+	if match := service.MatchCommand(".sendallface 3"); match != nil {
+		t.Fatalf("expected .sendallface with arg not to match, got=%v", match)
 	}
 }
 
