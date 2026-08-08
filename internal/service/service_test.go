@@ -537,6 +537,56 @@ func TestMatchCommandSupportsSendAllFace(t *testing.T) {
 	}
 }
 
+func TestMatchCommandSupportsHelpWithIndex(t *testing.T) {
+	service := NewService(config.Config{}, nil, nil, nil, nil, nil, nil)
+	match := service.MatchCommand(".help 3")
+	if match == nil || match.Command.Key != commandHelp {
+		t.Fatalf("expected .help 3 to match commandHelp, got=%v", match)
+	}
+	if len(match.Groups) < 2 || match.Groups[1] != "3" {
+		t.Fatalf("expected capture 3, got=%v", match.Groups)
+	}
+	if match := service.MatchCommand(".help abc"); match != nil {
+		t.Fatalf("expected .help abc not to match, got=%v", match)
+	}
+}
+
+func TestExecuteHelpCommandNoIndexReturnsTOC(t *testing.T) {
+	service := NewService(config.Config{}, nil, nil, nil, nil, nil, nil)
+	match := service.MatchCommand(".help")
+	action, err := service.ExecuteCommand(context.Background(), CommandContext{GroupID: "g1"}, match)
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if action.Message != helpTexts[0] {
+		t.Fatalf("expected helpTexts[0], got %q", action.Message)
+	}
+}
+
+func TestExecuteHelpCommandReturnsIndexedText(t *testing.T) {
+	service := NewService(config.Config{}, nil, nil, nil, nil, nil, nil)
+	match := service.MatchCommand(".help 3")
+	action, err := service.ExecuteCommand(context.Background(), CommandContext{GroupID: "g1"}, match)
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if action.Message != helpTexts[3] {
+		t.Fatalf("expected helpTexts[3], got %q", action.Message)
+	}
+}
+
+func TestExecuteHelpCommandOutOfRange(t *testing.T) {
+	service := NewService(config.Config{}, nil, nil, nil, nil, nil, nil)
+	match := service.MatchCommand(".help 99")
+	action, err := service.ExecuteCommand(context.Background(), CommandContext{GroupID: "g1"}, match)
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if action.Message != "无此帮助条目" {
+		t.Fatalf("expected out-of-range message, got %q", action.Message)
+	}
+}
+
 func TestHandleFaceIDCommandBuildsSingleFaceSegment(t *testing.T) {
 	service := NewService(config.Config{
 		BotUserID:   "1558109748",

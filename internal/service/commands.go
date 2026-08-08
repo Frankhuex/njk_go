@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"njk_go/internal/napcat"
@@ -114,7 +115,14 @@ func (s *Service) buildCommandHandler(key commandKey) commandHandler {
 		}
 	case commandHelp:
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
-			return simpleOutbound(cmdCtx.GroupID, helpTextBase), nil
+			if len(match.Groups) < 2 {
+				return simpleOutbound(cmdCtx.GroupID, helpTexts[0]), nil
+			}
+			n, err := strconv.Atoi(match.Groups[1])
+			if err != nil || n < 0 || n >= len(helpTexts) {
+				return simpleOutbound(cmdCtx.GroupID, "无此帮助条目"), nil
+			}
+			return simpleOutbound(cmdCtx.GroupID, helpTexts[n]), nil
 		}
 	case commandModel:
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {

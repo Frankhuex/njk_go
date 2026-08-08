@@ -57,33 +57,54 @@ type commandDef struct {
 	SystemPrompt string
 }
 
-var helpTextBase = `NJKv2.2指令帮助
+const (
+	helpText0 = `NJKv2.2指令帮助
 注：以下指令未说明均不保存回答。
+.help n：查看第n条指令内容
 1. 你居垦人格回复
-消息中含有你居垦三个字就会触发回复，平时也有一定概率回复。问答都保存。
-2. 后接一个数字
-2.1 自定义AI指令
+2. AI
+3. face系列
+4. 文件工具
+5. 对称图
+6. 其他`
+	helpText1 = `1. 你居垦人格回复
+消息中含有你居垦三个字就会触发回复，平时也有一定概率回复。问答都保存。`
+	helpText2 = `2. AI
+含系统提示词：
 .概括 .总结 .俳句 .无只因 .最 .vs .ccb .xmas：
 后接数字n，AI结合前n条消息生成回答
-2.2 正经AI
+不含系统提示词：
 .ai n：结合前n条消息，不加系统提示词，让AI回答。
 .aic：继续上一个.ai的话题
-指令本身不保存，指令回答会保存。
-2.3 face系列
+指令本身不保存，指令回答会保存。`
+	helpText3 = `3. face系列
 .face n：取前n条消息发出的face贴出
 .faceid x 或 .faceid x-y：将id闭区间的face同时发出与贴出
 .getfaceid n：提取前n条消息发出与被贴的face id
-.allface：所有face id
-2.4 文件工具
+.allface：所有face id`
+	helpText4 = `4. 文件工具
 .json n：打印前n条消息的segments的raw_json
-.file n：把前n条消息中的图片/动图作为文件发出
-2.5 对称图
-.对称左/.对称右/.对称上/.对称下/.对称左上/.对称右上/.对称左下/.对称右下
-2.6 其他
+.file n：把前n条消息中的图片/动图作为文件发出`
+	helpText5 = `5. 对称图
+.对称左/.对称右/.对称上/.对称下/.对称左上/.对称右上/.对称左下/.对称右下`
+	helpText6 = `6. 其他
 .生图 n：结合前n条消息，以全部消息文本为提示词，以最新图片为参考图生图
 .xdy：掷x次y面骰子并求和
 .报告 n：生成前n天的报告
-`
+.model：列出模型配置`
+)
+
+var (
+	helpTexts = []string{
+		helpText0,
+		helpText1,
+		helpText2,
+		helpText3,
+		helpText4,
+		helpText5,
+		helpText6,
+	}
+)
 
 func buildModelText(cfg config.Config) string {
 	models := []string{
@@ -308,6 +329,10 @@ ccb句式形如“豌豆笑传之踩踩背”。
 		{
 			Key:     commandHelp,
 			Pattern: `^ *\.help *$`,
+		},
+		{
+			Key:     commandHelp,
+			Pattern: `^ *\.help *(\d+) *$`,
 		},
 		{
 			Key:     commandModel,
