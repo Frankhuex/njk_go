@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"strings"
+
+	"njk_go/internal/util/uslice"
 )
 
 func (s *Service) handleAllFaceCommand(ctx context.Context, groupID string) (*OutboundAction, error) {
@@ -14,5 +16,5 @@ func (s *Service) handleAllFaceCommand(ctx context.Context, groupID string) (*Ou
 }
 
 func formatAllFaceIDs(allFaceIDs []string) string {
-	return "全部：" + strings.Join(allFaceIDs, "，")
+	return "全部：" + strings.Join(uslice.CompressIntRanges(allFaceIDs), "，")
 }

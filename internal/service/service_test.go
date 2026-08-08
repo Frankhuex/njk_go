@@ -491,8 +491,16 @@ func TestFormatGetFaceIDRowsGroupsBySource(t *testing.T) {
 }
 
 func TestFormatAllFaceIDsUsesFullWidthPunctuation(t *testing.T) {
-	got := formatAllFaceIDs([]string{"1", "2", "10"})
-	want := "全部：1，2，10"
+	got := formatAllFaceIDs([]string{"10", "12"})
+	want := "全部：10，12"
+	if got != want {
+		t.Fatalf("unexpected allface output: %q", got)
+	}
+}
+
+func TestFormatAllFaceIDsCompressesContiguousRanges(t *testing.T) {
+	got := formatAllFaceIDs([]string{"1", "2", "3", "5", "8", "9"})
+	want := "全部：1-3，5，8-9"
 	if got != want {
 		t.Fatalf("unexpected allface output: %q", got)
 	}
