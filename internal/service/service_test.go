@@ -23,8 +23,8 @@ import (
 
 func TestMatchCommandPrefersMoreSpecificPattern(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	match := service.MatchCommand(".bbh 36 add 第一章\n内容")
@@ -69,8 +69,8 @@ func TestFormatReportDropsTopicAndWordSections(t *testing.T) {
 
 func TestMatchCommandSupportsDotAIC(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	match := service.MatchCommand(".aic")
@@ -81,8 +81,8 @@ func TestMatchCommandSupportsDotAIC(t *testing.T) {
 
 func TestMatchCommandSupportsFaceWithoutSpace(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	match := service.MatchCommand(".face12")
@@ -96,8 +96,8 @@ func TestMatchCommandSupportsFaceWithoutSpace(t *testing.T) {
 
 func TestMatchCommandSupportsFaceIDSingle(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	for _, input := range []string{".faceid12", ".faceid 12"} {
@@ -113,8 +113,8 @@ func TestMatchCommandSupportsFaceIDSingle(t *testing.T) {
 
 func TestMatchCommandSupportsFaceIDRange(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	match := service.MatchCommand(".faceid 12-15")
@@ -128,8 +128,8 @@ func TestMatchCommandSupportsFaceIDRange(t *testing.T) {
 
 func TestMatchCommandRejectsInvalidFaceID(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	for _, input := range []string{".faceid abc", ".faceid 12-a", ".faceid"} {
@@ -141,8 +141,8 @@ func TestMatchCommandRejectsInvalidFaceID(t *testing.T) {
 
 func TestMatchCommandSupportsGetFaceIDWithOptionalSpace(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	for _, input := range []string{".getfaceid12", ".getfaceid 12"} {
@@ -158,8 +158,8 @@ func TestMatchCommandSupportsGetFaceIDWithOptionalSpace(t *testing.T) {
 
 func TestMatchCommandRejectsInvalidGetFaceID(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	for _, input := range []string{".getfaceid abc", ".getfaceid"} {
@@ -171,8 +171,8 @@ func TestMatchCommandRejectsInvalidGetFaceID(t *testing.T) {
 
 func TestMatchCommandSupportsAllFace(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	match := service.MatchCommand(".allface")
@@ -183,8 +183,8 @@ func TestMatchCommandSupportsAllFace(t *testing.T) {
 
 func TestMatchCommandRejectsAllFaceWithArg(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	if match := service.MatchCommand(".allface 1"); match != nil {
@@ -194,8 +194,8 @@ func TestMatchCommandRejectsAllFaceWithArg(t *testing.T) {
 
 func TestMatchCommandSupportsJSONWithOptionalSpace(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	for _, input := range []string{".json12", ".json 12"} {
@@ -211,8 +211,8 @@ func TestMatchCommandSupportsJSONWithOptionalSpace(t *testing.T) {
 
 func TestMatchCommandRejectsInvalidJSONCount(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	if match := service.MatchCommand(".json abc"); match != nil {
@@ -222,8 +222,8 @@ func TestMatchCommandRejectsInvalidJSONCount(t *testing.T) {
 
 func TestMatchCommandSupportsFileWithOptionalSpace(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	for _, input := range []string{".file12", ".file 12"} {
@@ -239,8 +239,8 @@ func TestMatchCommandSupportsFileWithOptionalSpace(t *testing.T) {
 
 func TestMatchCommandRejectsInvalidFileCount(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	if match := service.MatchCommand(".file abc"); match != nil {
@@ -326,8 +326,8 @@ func TestFormatRawJSONMessagesPreservesJSONTypes(t *testing.T) {
 
 func TestMatchCommandSupportsDiceWithOptionalInnerSpaces(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	match := service.MatchCommand(".2 d 6")
@@ -341,8 +341,8 @@ func TestMatchCommandSupportsDiceWithOptionalInnerSpaces(t *testing.T) {
 
 func TestHandleDiceCommandReturnsCommaSeparatedRolls(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	match := service.MatchCommand(".2d6")
@@ -384,8 +384,8 @@ func TestHandleDiceCommandReturnsCommaSeparatedRolls(t *testing.T) {
 
 func TestHandleDiceCommandRejectsCountOverTwenty(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	match := service.MatchCommand(".21d6")
@@ -500,8 +500,8 @@ func TestFormatAllFaceIDsUsesFullWidthPunctuation(t *testing.T) {
 
 func TestHandleFaceIDCommandBuildsSingleFaceSegment(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	match := service.MatchCommand(".faceid 12")
@@ -522,8 +522,8 @@ func TestHandleFaceIDCommandBuildsSingleFaceSegment(t *testing.T) {
 
 func TestHandleFaceIDCommandBuildsRangeFaceSegments(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	match := service.MatchCommand(".faceid 12-14")
@@ -546,8 +546,8 @@ func TestHandleFaceIDCommandBuildsRangeFaceSegments(t *testing.T) {
 
 func TestHandleFaceIDCommandRejectsInvalidRange(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	for _, input := range []string{".faceid 0", ".faceid 3-1"} {
@@ -567,8 +567,8 @@ func TestHandleFaceIDCommandRejectsInvalidRange(t *testing.T) {
 
 func TestHandleFaceIDCommandRejectsLargeRange(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 	}, nil, nil, nil, nil, nil, nil)
 
 	match := service.MatchCommand(".faceid 1-51")
@@ -626,8 +626,8 @@ func TestFormatDisplayTimeDoesNotShiftClock(t *testing.T) {
 
 func TestIsUserBannedUsesConfig(t *testing.T) {
 	service := NewService(config.Config{
-		BotUserID:       "1558109748",
-		BotNickname:     "你居垦",
+		BotUserID:   "1558109748",
+		BotNickname: "你居垦",
 		BannedUserIDs: map[string]struct{}{
 			"3889001802": {},
 		},

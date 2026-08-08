@@ -110,7 +110,11 @@ func (s *Service) buildCommandHandler(key commandKey) commandHandler {
 		}
 	case commandHelp:
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
-			return simpleOutbound(cmdCtx.GroupID, buildHelpText(s.cfg)), nil
+			return simpleOutbound(cmdCtx.GroupID, helpTextBase), nil
+		}
+	case commandModel:
+		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
+			return simpleOutbound(cmdCtx.GroupID, buildModelText(s.cfg)), nil
 		}
 	case commandHelpBBH:
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
