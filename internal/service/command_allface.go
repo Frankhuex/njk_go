@@ -6,14 +6,13 @@ import (
 )
 
 func (s *Service) handleAllFaceCommand(ctx context.Context, groupID string) (*OutboundAction, error) {
-	allFaceIDs, likedFaceIDs, err := s.store.AllFaceIDs(ctx)
+	allFaceIDs, err := s.store.AllFaceIDs(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return simpleOutbound(groupID, formatAllFaceIDs(allFaceIDs, likedFaceIDs)), nil
+	return simpleOutbound(groupID, formatAllFaceIDs(allFaceIDs)), nil
 }
 
-func formatAllFaceIDs(allFaceIDs []string, likedFaceIDs []string) string {
-	return "全部：" + strings.Join(allFaceIDs, "，") + "\n" +
-		"贴过的：" + strings.Join(likedFaceIDs, "，")
+func formatAllFaceIDs(allFaceIDs []string) string {
+	return "全部：" + strings.Join(allFaceIDs, "，")
 }

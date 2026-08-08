@@ -491,8 +491,8 @@ func TestFormatGetFaceIDRowsGroupsBySource(t *testing.T) {
 }
 
 func TestFormatAllFaceIDsUsesFullWidthPunctuation(t *testing.T) {
-	got := formatAllFaceIDs([]string{"1", "2", "10"}, []string{"2", "10"})
-	want := "全部：1，2，10\n贴过的：2，10"
+	got := formatAllFaceIDs([]string{"1", "2", "10"})
+	want := "全部：1，2，10"
 	if got != want {
 		t.Fatalf("unexpected allface output: %q", got)
 	}
