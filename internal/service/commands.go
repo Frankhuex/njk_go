@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"njk_go/internal/napcat"
+	"njk_go/internal/util/utext"
 )
 
 func (s *Service) MatchCommand(rawMessage string) *CommandMatch {
@@ -95,7 +96,7 @@ func (s *Service) buildCommandHandler(key commandKey) commandHandler {
 		}
 	case commandSend:
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
-			return simpleOutbound(cmdCtx.GroupID, match.Groups[1]), nil
+			return simpleOutbound(cmdCtx.GroupID, utext.UnescapeCQText(match.Groups[1])), nil
 		}
 	case commandJSON:
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {

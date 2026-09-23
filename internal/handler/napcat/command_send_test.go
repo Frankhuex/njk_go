@@ -21,15 +21,21 @@ func (w *sendRecorder) WriteText(payload []byte) error {
 }
 
 func TestSendCommandSendsOneStringWithoutStorage(t *testing.T) {
-	for _, body := range []string{"正文", " 正文", " ", "正文  ", "第一行\n第二行\n", "你居垦 [CQ:face,id=14]"} {
-		t.Run(body, func(t *testing.T) {
+	for _, tc := range []struct{ input, want string }{
+		{"正文", "正文"}, {" 正文", " 正文"}, {" ", " "},
+		{"正文  ", "正文  "}, {"第一行\n第二行\n", "第一行\n第二行\n"},
+		{"你居垦 &#91;CQ:face,id=14&#93;", "你居垦 [CQ:face,id=14]"},
+		{"&#91;x&#93; &amp; &#44;", "[x] & &#44;"},
+		{"&amp;#91;CQ:face,id=14&amp;#93;", "&#91;CQ:face,id=14&#93;"},
+	} {
+		t.Run(tc.input, func(t *testing.T) {
 			// An uninitialized store makes any accidental database access fail.
 			svc := service.NewService(config.Config{BotUserID: "123"}, &pgstore.Store{}, nil, nil, nil, nil, nil)
 			h := NewHandler(svc)
 			writer := &sendRecorder{}
 			event := &napcat.GroupMessageEvent{
 				GroupID: "456", UserID: "789", MessageID: "100",
-				RawMessage: ".send " + body,
+				RawMessage: ".send " + tc.input,
 				Message: napcat.NewSegmentMessage(napcat.MessageSegment{
 					Type: napcat.SegmentTypeFace, Data: napcat.MessageSegmentData{ID: "14"},
 				}),
@@ -48,7 +54,7 @@ func TestSendCommandSendsOneStringWithoutStorage(t *testing.T) {
 			if err := json.Unmarshal(writer.payloads[0], &req); err != nil {
 				t.Fatal(err)
 			}
-			if req.Action != "send_group_msg" || req.Params.GroupID != "456" || req.Params.Message != body {
+			if req.Action != "send_group_msg" || req.Params.GroupID != "456" || req.Params.Message != tc.want {
 				t.Fatalf("unexpected request: %s", writer.payloads[0])
 			}
 			if err := svc.CompleteActionResult(context.Background(), "ok", 0, "101"); err != nil {
