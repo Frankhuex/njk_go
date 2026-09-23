@@ -58,9 +58,10 @@ func (h *Handler) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 		return
 	}
 
-	h.service.SaveFacesFromGroupMessage(ctx, event)
-
 	match := h.service.MatchCommand(event.RawMessage)
+	if match == nil || match.Key() != "send" {
+		h.service.SaveFacesFromGroupMessage(ctx, event)
+	}
 	if match == nil && h.service.MentionsBot(event.Message) {
 		match = h.service.NJKCommand()
 	}
