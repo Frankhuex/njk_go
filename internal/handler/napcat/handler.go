@@ -123,7 +123,7 @@ func (h *Handler) HandleActionResponse(ctx context.Context, action *napcat.Actio
 func (h *Handler) executeActions(ctx context.Context, conn outboundWriter, clientAddr string, actions []service.OutboundAction) {
 	for _, action := range actions {
 		if action.Message != "" {
-			if err := h.sendGroupText(ctx, conn, action.GroupID, action.Message, action.ShouldSave); err != nil {
+			if err := h.sendGroupText(ctx, conn, action); err != nil {
 				log.Printf("【发送响应失败】%s - %v", clientAddr, err)
 			}
 		}
@@ -154,14 +154,21 @@ func (h *Handler) executeActions(ctx context.Context, conn outboundWriter, clien
 	}
 }
 
-func (h *Handler) sendGroupText(ctx context.Context, conn outboundWriter, groupID string, message string, shouldSave bool) error {
-	message = utext.NormalizeOutboundText(message)
+func (h *Handler) sendGroupText(ctx context.Context, conn outboundWriter, action service.OutboundAction) error {
+	message := action.Message
+	if !action.PreserveText {
+		message = utext.NormalizeOutboundText(message)
+	}
 	req := napcat.SendGroupMsgRequest{
 		Action: "send_group_msg",
 		Params: napcat.SendGroupMsgParams{
-			GroupID: napcat.ID(groupID),
+			GroupID: napcat.ID(action.GroupID),
 			Message: napcat.NewTextMessage(message),
 		},
+	}
+	if action.PreserveText {
+		autoEscape := true
+		req.Params.AutoEscape = &autoEscape
 	}
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -170,7 +177,7 @@ func (h *Handler) sendGroupText(ctx context.Context, conn outboundWriter, groupI
 	if err := conn.WriteText(data); err != nil {
 		return err
 	}
-	h.service.RecordPending(groupID, message, time.Now(), shouldSave)
-	log.Printf("【发送群消息】group=%s should_save=%t message=%s", groupID, shouldSave, message)
+	h.service.RecordPending(action.GroupID, message, time.Now(), action.ShouldSave)
+	log.Printf("【发送群消息】group=%s should_save=%t message=%s", action.GroupID, action.ShouldSave, message)
 	return nil
 }

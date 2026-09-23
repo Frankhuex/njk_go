@@ -182,6 +182,7 @@ type GroupMessageEvent struct {
 	Font        int64            `json:"font,omitempty"`
 	Sender      Sender           `json:"sender"`
 	Message     MessagePayload   `json:"message"`
+	MessageJSON json.RawMessage  `json:"-"`
 }
 
 type EmojiLike struct {

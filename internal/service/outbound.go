@@ -12,6 +12,7 @@ import (
 type OutboundAction struct {
 	GroupID            string
 	Message            string
+	PreserveText       bool
 	Segments           []napcat.MessageSegment
 	RawJSONSegments    []json.RawMessage
 	ImageURLs          []string

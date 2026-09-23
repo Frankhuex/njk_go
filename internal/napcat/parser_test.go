@@ -1,6 +1,9 @@
 package napcat
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
 func TestParseInboundMessageGroupMessage(t *testing.T) {
 	raw := []byte(`{
@@ -34,6 +37,21 @@ func TestParseInboundMessageGroupMessage(t *testing.T) {
 	}
 	if len(parsed.GroupMessage.Message.Segments) != 1 {
 		t.Fatalf("unexpected segment count: %d", len(parsed.GroupMessage.Message.Segments))
+	}
+}
+
+func TestParseInboundMessageKeepsOriginalMessageJSON(t *testing.T) {
+	message := `[{"type":"face","data":{"id":"500","raw":{"faceIndex":500,"faceText":"/秋秋赏月","faceType":2,"packId":null},"futureField":{"value":true}}}]`
+	raw := []byte(`{"post_type":"message","message_type":"group","message_id":787182976,"group_id":1050660050,"raw_message":"[CQ:face,id=500,raw=&#91;object Object&#93;]","message":` + message + `}`)
+	parsed, err := ParseInboundMessage(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.GroupMessage == nil || !bytes.Equal(parsed.GroupMessage.MessageJSON, []byte(message)) {
+		t.Fatalf("original message JSON was not preserved: %s", parsed.GroupMessage.MessageJSON)
+	}
+	if bytes.Contains(parsed.GroupMessage.MessageJSON, []byte("object Object")) {
+		t.Fatal("stored message JSON must come from message, not raw_message")
 	}
 }
 
