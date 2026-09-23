@@ -37,9 +37,11 @@ func (s *Service) handleFaceIDCommand(ctx context.Context, groupID string, messa
 		return simpleOutbound(groupID, fmt.Sprintf("太多啦，最多%d个", maxFaceIDSegments)), nil
 	}
 
+	// messages := []string{}
 	segments := make([]napcat.MessageSegment, 0, right-left+1)
 	emojiIDs := make([]string, 0, right-left+1)
 	for id := left; id <= right; id++ {
+		// messages = append(messages, fmt.Sprintf("[CQ:face,id=%d]", id))
 		segments = append(segments, napcat.NewFaceSegment(napcat.ID(strconv.Itoa(id))))
 		if id-left+1 <= maxFaceStickers {
 			emojiIDs = append(emojiIDs, strconv.FormatInt(int64(id), 10))
@@ -47,7 +49,8 @@ func (s *Service) handleFaceIDCommand(ctx context.Context, groupID string, messa
 	}
 
 	return &OutboundAction{
-		GroupID:            groupID,
+		GroupID: groupID,
+		// Message:            strings.Join(messages, ""),
 		Segments:           segments,
 		EmojiLikeMessageID: messageID,
 		EmojiLikeIDs:       emojiIDs,

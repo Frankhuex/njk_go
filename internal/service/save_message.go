@@ -67,7 +67,7 @@ func (s *Service) SaveIncomingMessageAndCheckImages(ctx context.Context, event *
 		}
 	}
 
-	rawJSON, err := json.Marshal(event.Message.Segments)
+	rawJSONString, err := incomingMessageJSON(event)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,6 @@ func (s *Service) SaveIncomingMessageAndCheckImages(ctx context.Context, event *
 	groupIDCopy := groupID
 	card := uconvert.EmptyToNil(event.Sender.Card)
 	text := uconvert.EmptyToNil(messageText)
-	rawJSONString := string(rawJSON)
 	rawMessage := uconvert.EmptyToNil(event.RawMessage)
 
 	message := &model.Message{
@@ -124,6 +123,15 @@ func (s *Service) SaveIncomingMessageAndCheckImages(ctx context.Context, event *
 	}
 
 	return duplicates, nil
+}
+
+func incomingMessageJSON(event *napcat.GroupMessageEvent) (string, error) {
+	if len(event.MessageJSON) > 0 {
+		return string(event.MessageJSON), nil
+	}
+	// Events constructed inside the service may not carry the inbound bytes.
+	encoded, err := json.Marshal(event.Message)
+	return string(encoded), err
 }
 
 func (s *Service) saveSelfMessage(ctx context.Context, pending *pendingMessage, messageID string) error {

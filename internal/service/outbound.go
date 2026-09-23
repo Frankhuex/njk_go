@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -11,7 +12,9 @@ import (
 type OutboundAction struct {
 	GroupID            string
 	Message            string
+	PreserveText       bool
 	Segments           []napcat.MessageSegment
+	RawJSONSegments    []json.RawMessage
 	ImageURLs          []string
 	ImageSegmentType   napcat.SegmentType
 	ShouldSave         bool

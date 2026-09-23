@@ -75,6 +75,32 @@ func (h *Handler) multiSendSegments(ctx context.Context, conn outboundWriter, gr
 	return nil
 }
 
+func (h *Handler) sendGroupRawSegments(conn outboundWriter, groupID string, segments []json.RawMessage) error {
+	req := napcatproto.ActionRequest[struct {
+		GroupID napcatproto.ID    `json:"group_id"`
+		Message []json.RawMessage `json:"message"`
+	}]{
+		Action: "send_group_msg",
+		Params: struct {
+			GroupID napcatproto.ID    `json:"group_id"`
+			Message []json.RawMessage `json:"message"`
+		}{
+			GroupID: napcatproto.ID(groupID),
+			Message: segments,
+		},
+	}
+	data, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	if err := conn.WriteText(data); err != nil {
+		return err
+	}
+	h.service.RecordPending(groupID, "", time.Now(), false)
+	log.Printf("【发送JSON消息段】group=%s should_save=false segment_count=%d", groupID, len(segments))
+	return nil
+}
+
 func (h *Handler) setMsgEmojiLike(ctx context.Context, conn outboundWriter, messageID string, emojiID string) error {
 	if err := urand.SleepMillis(ctx, 1000, 2000); err != nil {
 		return err

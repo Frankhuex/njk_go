@@ -78,6 +78,13 @@ func ParseInboundMessage(raw []byte) (*ParsedInbound, error) {
 		if err := json.Unmarshal(raw, &event); err != nil {
 			return nil, err
 		}
+		var original struct {
+			Message json.RawMessage `json:"message"`
+		}
+		if err := json.Unmarshal(raw, &original); err != nil {
+			return nil, err
+		}
+		event.MessageJSON = original.Message
 		parsed.Kind = EventKindGroupMessage
 		parsed.GroupMessage = &event
 	case envelope.IsNotice():

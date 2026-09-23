@@ -325,6 +325,47 @@ func TestFormatRawJSONMessagesPreservesJSONTypes(t *testing.T) {
 	}
 }
 
+func TestFormatRawJSONMessagesRetainsNestedRawFields(t *testing.T) {
+	input := `[{"type":"face","data":{"id":"500","raw":{"faceIndex":500,"faceText":"/秋秋赏月","faceType":2,"packId":null}}}]`
+	output, err := formatRawJSONMessages([]pgstore.StoredMessage{{RawJSON: input}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var segments []struct {
+		Data struct {
+			Raw struct {
+				FaceIndex int    `json:"faceIndex"`
+				FaceText  string `json:"faceText"`
+				FaceType  int    `json:"faceType"`
+				PackID    *int   `json:"packId"`
+			} `json:"raw"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(output), &segments); err != nil {
+		t.Fatal(err)
+	}
+	if len(segments) != 1 || segments[0].Data.Raw.FaceIndex != 500 || segments[0].Data.Raw.FaceText != "/秋秋赏月" || segments[0].Data.Raw.FaceType != 2 || segments[0].Data.Raw.PackID != nil {
+		t.Fatalf("nested raw fields changed: %s", output)
+	}
+}
+
+func TestIncomingMessageJSONFeedsCompleteJSONOutput(t *testing.T) {
+	message := `[{"type":"face","data":{"id":"500","raw":{"faceIndex":500,"faceText":"/秋秋赏月","faceType":2}}}]`
+	raw := `{"post_type":"message","message_type":"group","message_id":787182976,"group_id":1050660050,"raw_message":"[CQ:face,id=500,raw=&#91;object Object&#93;]","message":` + message + `}`
+	parsed, err := napcat.ParseInboundMessage([]byte(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := incomingMessageJSON(parsed.GroupMessage)
+	if err != nil || stored != message {
+		t.Fatalf("incoming JSON changed: %s, err=%v", stored, err)
+	}
+	output, err := formatRawJSONMessages([]pgstore.StoredMessage{{RawJSON: stored}})
+	if err != nil || !strings.Contains(output, `"faceIndex": 500`) || !strings.Contains(output, `"faceText": "/秋秋赏月"`) {
+		t.Fatalf("JSON command lost raw fields: %s, err=%v", output, err)
+	}
+}
+
 func TestMatchCommandSupportsDiceWithOptionalInnerSpaces(t *testing.T) {
 	service := NewService(config.Config{
 		BotUserID:   "1558109748",

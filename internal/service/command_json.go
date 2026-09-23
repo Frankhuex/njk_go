@@ -31,7 +31,7 @@ func (s *Service) handleJSONCommand(ctx context.Context, groupID string, match C
 	if err != nil {
 		return nil, err
 	}
-	return simpleOutbound(groupID, message), nil
+	return &OutboundAction{GroupID: groupID, Message: message, PreserveText: true}, nil
 }
 
 func formatRawJSONMessages(messages []pgstore.StoredMessage) (string, error) {
