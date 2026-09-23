@@ -11,6 +11,7 @@ import (
 	"njk_go/internal/client/imagegen"
 	"njk_go/internal/client/imagestore"
 	"njk_go/internal/client/pgstore"
+	"njk_go/internal/client/searxng"
 	"njk_go/internal/config"
 	"njk_go/internal/napcat"
 	"njk_go/internal/util/unapcat"
@@ -35,6 +36,7 @@ type Service struct {
 	freeAIClient   AICompleter
 	imageGenClient *imagegen.Client
 	bbhClient      *bbh.BBHClient
+	searchClient   *searxng.Client
 	httpClient     *httpclient.HttpClient
 	imageStore     *imagestore.ImageStoreClient
 	commands       []compiledCommand
@@ -57,6 +59,7 @@ func NewService(cfg config.Config, store *pgstore.Store, aiClient AICompleter, e
 		freeAIClient:   freeAIClient,
 		imageGenClient: imageGenClient,
 		bbhClient:      bbhClient,
+		searchClient:   searxng.NewClient(cfg.SearXNGBaseURL),
 		httpClient:     httpclient.NewClient(15 * time.Second),
 		imageStore:     imagestore.NewClient(".", cfg.MyURL),
 		pending:        &pendingQueue{},

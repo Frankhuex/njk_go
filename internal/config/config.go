@@ -29,6 +29,7 @@ type Config struct {
 	ImageGenBaseURL   string
 	ImageGenModelName string
 	BBHBaseURL        string
+	SearXNGBaseURL    string
 	MyURL             string
 	BotUserID         string
 	BotNickname       string
@@ -68,6 +69,7 @@ func Load() (Config, error) {
 		ImageGenBaseURL:   strings.TrimRight(value("IMAGE_GEN_BASE_URL", values, ""), "/"),
 		ImageGenModelName: value("IMAGE_GEN_MODEL_NAME", values, ""),
 		BBHBaseURL:        strings.TrimRight(value("BBH_BASE_URL", values, ""), "/"),
+		SearXNGBaseURL:    strings.TrimRight(value("SEARXNG_BASE_URL", values, "http://127.0.0.1:13004"), "/"),
 		MyURL:             strings.TrimRight(value("MY_URL", values, "http://localhost:11003"), "/"),
 		BotUserID:         value("BOT_USER_ID", values, ""),
 		BotNickname:       value("BOT_NICKNAME", values, "你居垦"),

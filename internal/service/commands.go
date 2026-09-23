@@ -102,6 +102,10 @@ func (s *Service) buildCommandHandler(key commandKey) commandHandler {
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
 			return handleSendJSONCommand(cmdCtx.GroupID, match.Groups[1]), nil
 		}
+	case commandSearch:
+		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
+			return s.handleSearchCommand(ctx, cmdCtx.GroupID, match)
+		}
 	case commandJSON:
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
 			return s.handleJSONCommand(ctx, cmdCtx.GroupID, match)

@@ -29,6 +29,7 @@ const (
 	commandSendAllFace        commandKey = "send_all_face"
 	commandSend               commandKey = "send"
 	commandSendJSON           commandKey = "send_json"
+	commandSearch             commandKey = "search"
 	commandJSON               commandKey = "json"
 	commandFile               commandKey = "file"
 	commandGenerateImage      commandKey = "generate_image"
@@ -68,7 +69,8 @@ const (
 3. face系列
 4. 文件工具
 5. 对称图
-6. 其他`
+6. 其他
+7. bbh接龙`
 	helpText1 = `1. 你居垦人格回复
 消息中含有你居垦三个字就会触发回复，平时也有一定概率回复。问答都保存。`
 	helpText2 = `2. AI
@@ -83,7 +85,8 @@ const (
 .face n：取前n条消息发出的face贴出
 .faceid x 或 .faceid x-y：将id闭区间的face同时发出与贴出
 .getfaceid n：提取前n条消息发出与被贴的face id
-.allface：所有face id`
+.allface：所有face id
+.sendallface：按id把所有系统表情贴出`
 	helpText4 = `4. 文件工具
 .json n：打印前n条消息的segments的raw_json
 .file n：把前n条消息中的图片/动图作为文件发出`
@@ -92,10 +95,18 @@ const (
 	helpText6 = `6. 其他
 .send 正文：发送一条字符串消息，仅去掉指令后的一个空格，指令和发送消息均不入库
 .sendjson JSON：发送一条JSON消息段，指令和发送消息均不入库
+.搜索n [提示词]：用最近n条消息搜索网页，并按提示词整理结果，提示词可省略
 .生图 n：结合前n条消息，以全部消息文本为提示词，以最新图片为参考图生图
 .xdy：掷x次y面骰子并求和
 .报告 n：生成前n天的报告
 .model：列出模型配置`
+	helpText7 = `7. bbh接龙
+.bbh：列出所有书籍
+.bbh 书籍ID：列出该书籍段落标题
+.bbh 书籍ID 段落ID 或 书籍ID a-b：查看指定段落
+.bbh 书籍ID add 标题【换行】正文：在书末尾接龙一段
+.bbh 书籍ID ai：让AI在书末尾接龙一段
+.help bbh：bbh详细讲解`
 )
 
 var (
@@ -107,6 +118,7 @@ var (
 		helpText4,
 		helpText5,
 		helpText6,
+		helpText7,
 	}
 )
 
@@ -285,6 +297,10 @@ ccb句式形如“豌豆笑传之踩踩背”。
 		{
 			Key:     commandSendJSON,
 			Pattern: `(?s)^\.sendjson (.+)$`,
+		},
+		{
+			Key:     commandSearch,
+			Pattern: `(?s)^ *\.搜索[[:space:]\p{Zs}]*(\d+)(?:[[:space:]\p{Zs}]+(.+?))?[[:space:]\p{Zs}]*$`,
 		},
 		{
 			Key:     commandSendAllFace,

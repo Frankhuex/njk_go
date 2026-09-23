@@ -28,6 +28,17 @@ func TestLoadUsesEnvOverrideForDBUser(t *testing.T) {
 	}
 }
 
+func TestLoadUsesSearXNGBaseURLOverride(t *testing.T) {
+	t.Setenv("SEARXNG_BASE_URL", "http://127.0.0.1:13004/")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SearXNGBaseURL != "http://127.0.0.1:13004" {
+		t.Fatalf("unexpected SearXNG URL: %q", cfg.SearXNGBaseURL)
+	}
+}
+
 func TestLoadIncludesDefaultBannedUserID(t *testing.T) {
 	previous := os.Getenv("BANNED_USER_IDS")
 	t.Cleanup(func() {

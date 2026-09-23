@@ -83,6 +83,9 @@
   - `BOT_NICKNAME`
   - `BANNED_USER_IDS`
   - `BBH_BASE_URL`
+  - `SEARXNG_BASE_URL`：`.搜索` 使用的 SearXNG 地址，默认 `http://127.0.0.1:13004`
+
+`.搜索n 提示词` 或 `.搜索 n 提示词` 会将本群最近 n 条已保存消息的文本用空格连接，在 SearXNG 搜索，并让主 AI 模型按提示词整理前 5 条网页结果。提示词可省略（如 `.搜索n`），此时让 AI 自行整理搜索结果。`n` 与提示词之间必须有空白字符。机器人与 SearXNG 不在同一台机器时，请将 `SEARXNG_BASE_URL` 设为机器人能访问的地址。
 
 ## 启动 Go 服务
 
