@@ -28,6 +28,7 @@ const (
 	commandAllFace            commandKey = "all_face"
 	commandSendAllFace        commandKey = "send_all_face"
 	commandSend               commandKey = "send"
+	commandSendJSON           commandKey = "send_json"
 	commandJSON               commandKey = "json"
 	commandFile               commandKey = "file"
 	commandGenerateImage      commandKey = "generate_image"
@@ -90,6 +91,7 @@ const (
 .对称左/.对称右/.对称上/.对称下/.对称左上/.对称右上/.对称左下/.对称右下`
 	helpText6 = `6. 其他
 .send 正文：发送一条字符串消息，仅去掉指令后的一个空格，指令和发送消息均不入库
+.sendjson JSON：发送一条JSON消息段，指令和发送消息均不入库
 .生图 n：结合前n条消息，以全部消息文本为提示词，以最新图片为参考图生图
 .xdy：掷x次y面骰子并求和
 .报告 n：生成前n天的报告
@@ -279,6 +281,10 @@ ccb句式形如“豌豆笑传之踩踩背”。
 		{
 			Key:     commandSend,
 			Pattern: `(?s)^\.send (.+)$`,
+		},
+		{
+			Key:     commandSendJSON,
+			Pattern: `(?s)^\.sendjson (.+)$`,
 		},
 		{
 			Key:     commandSendAllFace,

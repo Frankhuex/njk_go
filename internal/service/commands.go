@@ -98,6 +98,10 @@ func (s *Service) buildCommandHandler(key commandKey) commandHandler {
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
 			return simpleOutbound(cmdCtx.GroupID, utext.UnescapeCQText(match.Groups[1])), nil
 		}
+	case commandSendJSON:
+		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
+			return handleSendJSONCommand(cmdCtx.GroupID, match.Groups[1]), nil
+		}
 	case commandJSON:
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
 			return s.handleJSONCommand(ctx, cmdCtx.GroupID, match)

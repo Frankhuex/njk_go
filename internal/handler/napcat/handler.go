@@ -59,7 +59,7 @@ func (h *Handler) HandleGroupMessage(ctx context.Context, conn outboundWriter, c
 	}
 
 	match := h.service.MatchCommand(event.RawMessage)
-	if match == nil || match.Key() != "send" {
+	if match == nil || (match.Key() != "send" && match.Key() != "send_json") {
 		h.service.SaveFacesFromGroupMessage(ctx, event)
 	}
 	if match == nil && h.service.MentionsBot(event.Message) {
@@ -130,6 +130,11 @@ func (h *Handler) executeActions(ctx context.Context, conn outboundWriter, clien
 		if len(action.Segments) > 0 {
 			if err := h.multiSendSegments(ctx, conn, action.GroupID, action.Segments); err != nil {
 				log.Printf("【发送消息段响应失败】%s - %v", clientAddr, err)
+			}
+		}
+		if len(action.RawJSONSegments) > 0 {
+			if err := h.sendGroupRawSegments(conn, action.GroupID, action.RawJSONSegments); err != nil {
+				log.Printf("【发送JSON消息段失败】%s - %v", clientAddr, err)
 			}
 		}
 		if len(action.ImageURLs) > 0 {
