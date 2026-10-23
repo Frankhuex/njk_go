@@ -158,11 +158,13 @@ func (h *Handler) sendGroupText(ctx context.Context, conn outboundWriter, action
 	message := action.Message
 	if !action.PreserveText {
 		message = utext.NormalizeOutboundText(message)
+		message = utext.EscapeCQAnimatedSummary(message)
 	}
 	req := napcat.SendGroupMsgRequest{
 		Action: "send_group_msg",
 		Params: napcat.SendGroupMsgParams{
 			GroupID: napcat.ID(action.GroupID),
+			// The version marker is transport-only; RecordPending keeps the original text.
 			Message: napcat.NewTextMessage(message),
 		},
 	}

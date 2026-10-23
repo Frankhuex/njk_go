@@ -76,12 +76,12 @@ func (s *Service) getLastAI(groupID string) (time.Time, bool) {
 	return at, ok
 }
 
-func (s *Service) systemPrompt(key commandKey) (string, error) {
+func (s *Service) aiCommand(key commandKey) (compiledCommand, error) {
 	command := s.commandByKey(key)
 	if command == nil {
-		return "", fmt.Errorf("%s command not configured", key)
+		return compiledCommand{}, fmt.Errorf("%s command not configured", key)
 	}
-	return command.Command.SystemPrompt, nil
+	return command.Command, nil
 }
 
 func simpleOutbound(groupID string, message string) *OutboundAction {

@@ -22,7 +22,7 @@ func (s *Service) handleAIPromptCommand(ctx context.Context, groupID string, mat
 		return insufficientHistory(groupID), nil
 	}
 	textPrompt, imageURLs := buildMultimodalPrompt(history)
-	result, err := s.completeWithMultimodalFallback(ctx, groupID, match.Command.SystemPrompt, textPrompt, imageURLs, nil)
+	result, err := s.completeCommand(ctx, groupID, match.Command, textPrompt, imageURLs, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (s *Service) handleAICommand(ctx context.Context, cmdCtx CommandContext, ma
 	queryText := strings.Join(formattedHistory, "\n")
 	historyPrompt = s.enrichPromptWithMemory(ctx, cmdCtx.GroupID, cmdCtx.SenderID, queryText, historyPrompt)
 	_, imageURLs := buildMultimodalPrompt(history)
-	result, err := s.completeWithMultimodalFallback(ctx, cmdCtx.GroupID, match.Command.SystemPrompt, historyPrompt, imageURLs, nil)
+	result, err := s.completeCommand(ctx, cmdCtx.GroupID, match.Command, historyPrompt, imageURLs, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (s *Service) handleAICCommand(ctx context.Context, cmdCtx CommandContext) (
 	if len(history) == 0 {
 		return insufficientHistory(cmdCtx.GroupID), nil
 	}
-	systemPrompt, err := s.systemPrompt(commandAI)
+	command, err := s.aiCommand(commandAI)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (s *Service) handleAICCommand(ctx context.Context, cmdCtx CommandContext) (
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.completeWithMultimodalFallback(ctx, cmdCtx.GroupID, systemPrompt, historyPrompt, imageURLs, nil)
+	result, err := s.completeCommand(ctx, cmdCtx.GroupID, command, historyPrompt, imageURLs, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (s *Service) GenerateNJKReply(ctx context.Context, cmdCtx CommandContext) (
 	}
 
 	var result string
-	systemPrompt, err := s.systemPrompt(commandNJK)
+	command, err := s.aiCommand(commandNJK)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (s *Service) GenerateNJKReply(ctx context.Context, cmdCtx CommandContext) (
 	_, imageURLs := buildMultimodalPrompt(history)
 	for i := 0; i < 5; i++ {
 		temperature := 0.8 + urand.Float64()*0.1
-		candidate, err := s.completeWithMultimodalFallback(ctx, cmdCtx.GroupID, systemPrompt, historyPrompt, imageURLs, &temperature)
+		candidate, err := s.completeCommand(ctx, cmdCtx.GroupID, command, historyPrompt, imageURLs, &temperature)
 		if err != nil {
 			return nil, err
 		}

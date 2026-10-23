@@ -4,12 +4,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 )
+
+const highRiskRejectionText = "The request was rejected because it was considered high risk"
+
+// ErrHighRiskRejection stops delivery and multimodal retries for a rejected request.
+var ErrHighRiskRejection = errors.New(highRiskRejectionText)
 
 type AIClient struct {
 	baseURL    string
@@ -30,10 +36,7 @@ func NewClient(baseURL string, apiKey string, modelName string) *AIClient {
 }
 
 func (c *AIClient) Complete(ctx context.Context, systemPrompt string, userPrompt string, temperature *float64) (string, error) {
-	messages := []chatMessage{
-		{Role: "system", Content: systemPrompt},
-		{Role: "user", Content: userPrompt},
-	}
+	messages := chatMessages(systemPrompt, userPrompt)
 	return c.completeWithMessages(ctx, messages, temperature)
 }
 
@@ -68,11 +71,17 @@ func (c *AIClient) CompleteMultimodal(ctx context.Context, systemPrompt string, 
 		return "", fmt.Errorf("missing multimodal content")
 	}
 
-	messages := []chatMessage{
-		{Role: "system", Content: systemPrompt},
-		{Role: "user", Content: parts},
-	}
+	messages := chatMessages(systemPrompt, parts)
 	return c.completeWithMessages(ctx, messages, temperature)
+}
+
+// Omit an unconfigured system prompt for commands defined entirely in user content.
+func chatMessages(systemPrompt string, userContent any) []chatMessage {
+	messages := make([]chatMessage, 0, 2)
+	if strings.TrimSpace(systemPrompt) != "" {
+		messages = append(messages, chatMessage{Role: "system", Content: systemPrompt})
+	}
+	return append(messages, chatMessage{Role: "user", Content: userContent})
 }
 
 func (c *AIClient) completeWithMessages(ctx context.Context, messages []chatMessage, temperature *float64) (string, error) {
@@ -116,7 +125,15 @@ func (c *AIClient) completeWithMessages(ctx context.Context, messages []chatMess
 		return "", err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if strings.Contains(string(respData), highRiskRejectionText) {
+			return "", ErrHighRiskRejection
+		}
 		return "", fmt.Errorf("ai request failed: %s", strings.TrimSpace(string(respData)))
+	}
+
+	// Some providers return the refusal as a plain-text successful response.
+	if strings.TrimSpace(string(respData)) == highRiskRejectionText {
+		return "", ErrHighRiskRejection
 	}
 
 	var parsed chatResponse
@@ -129,6 +146,9 @@ func (c *AIClient) completeWithMessages(ctx context.Context, messages []chatMess
 	content, ok := parsed.Choices[0].Message.Content.(string)
 	if !ok {
 		return "", fmt.Errorf("unexpected ai response content type %T", parsed.Choices[0].Message.Content)
+	}
+	if strings.Contains(content, highRiskRejectionText) {
+		return "", ErrHighRiskRejection
 	}
 	return content, nil
 }

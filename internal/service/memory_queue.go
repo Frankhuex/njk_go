@@ -108,6 +108,10 @@ func (s *Service) runMemoryBatchLoop() {
 }
 
 func (s *Service) enqueueMemorySource(source *memorySource) {
+	if !memoryEnabled {
+		return
+	}
+
 	if s == nil || s.memoryPending == nil || source == nil {
 		log.Printf("【待记忆入队跳过】reason=service_or_queue_nil")
 		return

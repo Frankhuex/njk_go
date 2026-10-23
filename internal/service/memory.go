@@ -17,6 +17,9 @@ import (
 	"github.com/pgvector/pgvector-go"
 )
 
+// 临时下线记忆系统；嵌入模型恢复后改为 true。
+const memoryEnabled = false
+
 const (
 	memoryFactTopK                  = 5
 	memoryImpressionTopK            = 2
@@ -57,6 +60,10 @@ func (s *Service) rememberBotReply(ctx context.Context, source *memorySource) {
 }
 
 func (s *Service) processMemoryBatch(ctx context.Context, batch pendingMemoryBatch) {
+	if !memoryEnabled {
+		return
+	}
+
 	if s == nil || s.store == nil || s.freeAIClient == nil || s.embedClient == nil {
 		log.Printf("【记忆批处理跳过】bucket=%s reason=dependency_nil", batch.Key)
 		return
@@ -289,6 +296,10 @@ func (s *Service) saveImpressionMemory(ctx context.Context, source memorySource,
 }
 
 func (s *Service) BuildMemoryContext(ctx context.Context, groupID string, userID string, queryText string) (string, error) {
+	if !memoryEnabled {
+		return "", nil
+	}
+
 	if s == nil || s.store == nil || s.embedClient == nil {
 		log.Printf("【记忆检索跳过】group=%s user=%s reason=dependency_nil", groupID, userID)
 		return "", nil

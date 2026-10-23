@@ -154,7 +154,19 @@ type compiledCommand struct {
 	Key          commandKey
 	Pattern      *regexp.Regexp
 	SystemPrompt string
-	Handler      commandHandler
+	// UserPromptTemplate replaces each literal %s with the assembled chat context.
+	// Empty templates pass context through; other percent signs remain literal.
+	UserPromptTemplate string
+	Handler            commandHandler
+}
+
+// userPrompt renders after memory enrichment and before multimodal fallback,
+// so every retry receives the same layout. Replacement never interprets context.
+func (c compiledCommand) userPrompt(context string) string {
+	if c.UserPromptTemplate == "" {
+		return context
+	}
+	return strings.ReplaceAll(c.UserPromptTemplate, "%s", context)
 }
 
 type CommandMatch struct {

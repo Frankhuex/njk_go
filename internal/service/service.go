@@ -69,17 +69,18 @@ func NewService(cfg config.Config, store *pgstore.Store, aiClient AICompleter, e
 			source = def.PatternFunc(cfg.BotUserID)
 		}
 		command := compiledCommand{
-			Key:          def.Key,
-			Pattern:      regexp.MustCompile(source),
-			SystemPrompt: def.SystemPrompt,
-			Handler:      service.buildCommandHandler(def.Key),
+			Key:                def.Key,
+			Pattern:            regexp.MustCompile(source),
+			SystemPrompt:       def.SystemPrompt,
+			UserPromptTemplate: def.UserPromptTemplate,
+			Handler:            service.buildCommandHandler(def.Key),
 		}
 		commands = append(commands, command)
 		commandMap[command.Key] = command
 	}
 	service.commands = commands
 	service.commandMap = commandMap
-	if service.store != nil && service.embedClient != nil {
+	if memoryEnabled && service.store != nil && service.embedClient != nil {
 		go service.runMemoryBatchLoop()
 	}
 	return service

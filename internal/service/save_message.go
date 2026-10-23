@@ -59,6 +59,8 @@ func (s *Service) SaveIncomingMessageAndCheckImages(ctx context.Context, event *
 			if segment.Data.URL != "" {
 				imageURLs = append(imageURLs, segment.Data.URL)
 			}
+			// Preserve image CQ data in history as well as collecting multimodal URLs.
+			fallthrough
 		default:
 			keyValStr, err := uconvert.StructToKeyValue(segment.Data)
 			if err == nil {
