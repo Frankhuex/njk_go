@@ -2,6 +2,7 @@ tools/
 **/.DS_Store
 .env
 build/
+deploy.conf
 images/
 runtime/
 temp/

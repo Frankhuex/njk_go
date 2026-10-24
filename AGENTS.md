@@ -356,6 +356,19 @@ NapCat 入站 JSON 的处理流程：
 
 ## 调试方法
 
+### 部署入口
+
+- `deploy.sh`：本地构建、服务器版本分配、tar.xz 打包、rsync 上传、远端解包校验后调用 restart.sh
+- `deploy.conf.example`：SSH 和部署目录配置模板；本地 `deploy.conf` 已忽略
+- `scripts/reserve-version.sh`：通过 SSH 在服务器执行，加锁登记版本号
+- `restart.sh`、`scripts/server/deploy_server.py`：服务器发布入口和控制逻辑，使用用户级 systemd 管理进程、切换版本和失败回退
+- `DEPLOY.md`：部署命令、目录和远端脚本接口约定
+- `bash deploy.sh 2.3 --check`：只读检查
+- `bash deploy.sh 2.3 --upload-only`：构建和上传，不重启服务
+- `bash deploy.sh 2.3`：上传后调用服务器部署根目录下的 restart.sh
+
+版本目录仅携带程序、版本信息和校验文件；服务器 .env 与运行数据独立保留。部署流程不执行数据库更新。
+
 本仓库当前本地调试建议顺序：
 
 1. 先跑测试
