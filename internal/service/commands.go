@@ -122,6 +122,10 @@ func (s *Service) buildCommandHandler(key commandKey) commandHandler {
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
 			return s.handleSymmetricCommand(ctx, cmdCtx.GroupID, match)
 		}
+	case commandQTan:
+		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
+			return s.handleQTanCommand(ctx, cmdCtx.GroupID, match)
+		}
 	case commandHelp:
 		return func(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
 			if len(match.Groups) < 2 {

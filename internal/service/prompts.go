@@ -41,6 +41,7 @@ const (
 	commandSymmetricRightUp   commandKey = "symmetric_right_up"
 	commandSymmetricLeftDown  commandKey = "symmetric_left_down"
 	commandSymmetricRightDown commandKey = "symmetric_right_down"
+	commandQTan               commandKey = "q_tan"
 	commandHelp               commandKey = "help"
 	commandModel              commandKey = "model"
 	commandHelpBBH            commandKey = "help_bbh"
@@ -70,7 +71,7 @@ const (
 2. AI
 3. face系列
 4. 文件工具
-5. 对称图
+5. 图片效果
 6. 其他`
 	helpText1 = `1. 你居垦人格回复
 消息中含有你居垦三个字就会触发回复，平时也有一定概率回复。问答都保存。`
@@ -90,7 +91,8 @@ const (
 	helpText4 = `4. 文件工具
 .json n：打印前n条消息的segments的raw_json
 .file n：把前n条消息中的图片/动图作为文件发出`
-	helpText5 = `5. 对称图
+	helpText5 = `5. 图片效果
+.qtan n scale x bpm y：取前n条消息中的图片或动图，生成Q弹动图；scale默认1.5，bpm默认130，均支持小数，两者可省略、可互换顺序、不可重复
 .对称左/.对称右/.对称上/.对称下/.对称左上/.对称右上/.对称左下/.对称右下`
 	helpText6 = `6. 其他
 .send 正文：发送一条字符串消息，仅去掉指令后的一个空格，指令和发送消息均不入库
@@ -362,6 +364,10 @@ CQ码可以与正文组合在同一条消息中，仅在确实有助于表达时
 		{
 			Key:     commandSymmetricRightDown,
 			Pattern: `^ *\.对称右下 *(\d+) *$`,
+		},
+		{
+			Key:     commandQTan,
+			Pattern: `^ *\.(?:[Qq]弹|[Qq][Tt][Aa][Nn]) *(\d+)(?: *(?:(?:[Ss][Cc][Aa][Ll][Ee]) *(\d+(?:\.\d+)?) *(?:[Bb][Pp][Mm]) *(\d+(?:\.\d+)?)|(?:[Bb][Pp][Mm]) *(\d+(?:\.\d+)?) *(?:[Ss][Cc][Aa][Ll][Ee]) *(\d+(?:\.\d+)?)|(?:[Ss][Cc][Aa][Ll][Ee]) *(\d+(?:\.\d+)?)|(?:[Bb][Pp][Mm]) *(\d+(?:\.\d+)?)))? *$`,
 		},
 		{
 			Key:     commandHelp,

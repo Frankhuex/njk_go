@@ -20,6 +20,7 @@
 - 记录系统表情 ID 与消息表情回应
 - 提供 `.face`、`.faceid`、`.getfaceid`、`.allface` 等系统表情相关命令
 - 生成并回发对称图片
+- 提供 `.Q弹` 命令，把最近消息中的静态图和 GIF 生成面积守恒的伸缩动图
 - 提供 `.生图` 命令调用 SiliconFlow 生图接口
 
 在线服务入口是 `cmd/server/main.go`。
@@ -194,6 +195,7 @@ NapCat 入站 JSON 的处理流程：
   - `command_image_to_file.go`
   - `command_dice.go`
   - `command_symmetric.go`
+  - `command_qtan.go`
 - 入库与表情
   - `save_message.go`
   - `save_image.go`
@@ -257,6 +259,7 @@ NapCat 入站 JSON 的处理流程：
   - `.XdY`
   - `.对称左` / `.对称右` / `.对称上` / `.对称下`
   - `.对称左上` / `.对称右上` / `.对称左下` / `.对称右下`
+  - `.Q弹 n [scaleX] [bpmY]`（或 `.qtan n ...`，大小写不限）：取前 n 条消息中的图片生成 Q弹动图；scale 默认 1.5、bpm 默认 130，均支持小数，可省略、可互换顺序但不可重复
 - 帮助类
   - `.help`
   - `.help bbh`
@@ -348,6 +351,7 @@ NapCat 入站 JSON 的处理流程：
 
 - `internal/service/service_test.go`
 - `internal/service/command_symmetric_test.go`
+- `internal/service/command_qtan_test.go`
 - `internal/service/image_test.go`
 - `internal/config/config_test.go`
 - `internal/napcat/parser_test.go`
