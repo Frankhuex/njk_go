@@ -8,9 +8,9 @@ bash deploy.sh 2.3
 
 脚本先检查连接和依赖，再执行 `build.sh` 编译服务器架构的 Linux 程序。服务器加锁分配版本，首次从 2.3.2 推进到 2.3.3；新前缀从 .0 开始。构建失败不分配编号；分配后即使上传失败也保留编号。版本记录 `versions.log` 独立于版本目录，请勿删除。
 
-本地将 `njk_go`、`manifest`、`SHA256SUMS` 打成 `release.tar.xz`（xz -6），连同压缩包 SHA-256 校验文件通过 rsync 上传。传输时关闭 rsync 二次压缩，显示压缩包的已传字节、百分比、速度和剩余时间，结束后显示统计。上传目标为 `releases/<版本号>.uploading/`；服务器先校验压缩包，再解包并校验内部文件，删除压缩包后重命名为正式版本目录，最后调用 `restart.sh <版本号>`。manifest 记录提交、工作区改动状态、目标架构和构建时间。
+发布包只有程序本身：本地用 `xz -6` 压缩成 `njk_go.xz`，通过 rsync 上传到 `releases/<版本号>.uploading/`。传输时关闭 rsync 二次压缩，显示已传字节、百分比、速度和剩余时间，结束后显示统计。服务器解压出 `njk_go`、设置可执行权限、删除压缩包，将目录重命名为正式版本目录，最后调用 `restart.sh <版本号>`。
 
-本地依赖 tar、xz，服务器使用 Python 3.12 的 tarfile/lzma 解包；正式版本目录仍只保留程序、manifest 和 SHA256SUMS。
+不生成也不校验 SHA256SUMS 或 manifest。本地依赖 xz，服务器使用 Python 3 的 lzma 解压；正式版本目录只保留程序本身。
 
 辅助命令：
 

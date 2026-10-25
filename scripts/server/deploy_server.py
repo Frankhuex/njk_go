@@ -2,7 +2,6 @@
 """Linux release controller: Python standard library and user systemd."""
 import argparse
 import fcntl
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -69,23 +68,6 @@ class Deployment:
         path = self.releases / version
         if not path.is_dir() or path.is_symlink():
             raise RuntimeError('版本目录不存在或为软链接: ' + version)
-        if not (path / 'njk_go').is_file() or not os.access(path / 'njk_go', os.X_OK):
-            raise RuntimeError('发布包缺少可执行程序')
-        listed = set()
-        for line in (path / 'SHA256SUMS').read_text().splitlines():
-            checksum, name = line.split('  ', 1)
-            target = path / name
-            if not target.resolve().is_relative_to(path.resolve()) or target.is_symlink():
-                raise RuntimeError('校验文件包含非法路径')
-            if hashlib.sha256(target.read_bytes()).hexdigest() != checksum:
-                raise RuntimeError('文件校验失败: ' + name)
-            listed.add(target.relative_to(path).as_posix())
-        actual = {p.relative_to(path).as_posix() for p in path.rglob('*')
-                  if p.is_file() and p.name not in ('SHA256SUMS', '.deployed')}
-        if actual != listed or 'njk_go' not in listed or 'manifest' not in listed:
-            raise RuntimeError('校验文件与发布内容不一致')
-        if read_env(path / 'manifest').get('version') != version:
-            raise RuntimeError('manifest 版本号不匹配')
         return path
 
     def current(self):
@@ -209,14 +191,6 @@ class Deployment:
         self.log('已恢复程序 ' + old)
 
 
-def checksum_release(path):
-    lines = []
-    for file in sorted(path.rglob('*')):
-        if file.is_file() and file.name not in ('SHA256SUMS', '.deployed'):
-            lines.append(hashlib.sha256(file.read_bytes()).hexdigest() + '  ./' + file.relative_to(path).as_posix())
-    (path / 'SHA256SUMS').write_text('\n'.join(lines) + '\n')
-
-
 def install(root, legacy, baseline):
     version_tuple(baseline)
     if not re.fullmatch(r'/[A-Za-z0-9_/-]+', str(root)):
@@ -239,8 +213,6 @@ def install(root, legacy, baseline):
     release = root / 'releases' / baseline
     release.mkdir(parents=True, exist_ok=False)
     shutil.copy2(binary, release / 'njk_go')
-    (release / 'manifest').write_text(f'version={baseline}\nsource=legacy\n')
-    checksum_release(release)
     (release / '.deployed').touch()
     for name in ('images', 'runtime', 'temp'):
         target = root / name

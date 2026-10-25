@@ -64,7 +64,7 @@ type commandDef struct {
 }
 
 const (
-	helpText0 = `NJKv2.3.2指令帮助
+	helpText0 = `NJKv2.4指令帮助
 注：以下指令未说明均不保存回答。
 .help n：查看第n条指令内容
 1. 你居垦人格回复
