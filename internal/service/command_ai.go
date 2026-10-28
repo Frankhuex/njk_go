@@ -12,8 +12,18 @@ import (
 	"njk_go/internal/util/utime"
 )
 
+const maxAIHistoryMessages = 500
+
+func parseAIHistoryCount(value string) int {
+	count, err := strconv.Atoi(value)
+	if err != nil || count > maxAIHistoryMessages {
+		return maxAIHistoryMessages
+	}
+	return count
+}
+
 func (s *Service) handleAIPromptCommand(ctx context.Context, groupID string, match CommandMatch) (*OutboundAction, error) {
-	count, _ := strconv.Atoi(match.Groups[1])
+	count := parseAIHistoryCount(match.Groups[1])
 	history, err := s.store.RecentMessageAndImages(ctx, groupID, count)
 	if err != nil {
 		return nil, err
@@ -30,7 +40,7 @@ func (s *Service) handleAIPromptCommand(ctx context.Context, groupID string, mat
 }
 
 func (s *Service) handleAICommand(ctx context.Context, cmdCtx CommandContext, match CommandMatch) (*OutboundAction, error) {
-	count, _ := strconv.Atoi(match.Groups[1])
+	count := parseAIHistoryCount(match.Groups[1])
 	history, err := s.store.RecentMessageAndImages(ctx, cmdCtx.GroupID, count)
 	if err != nil {
 		return nil, err
