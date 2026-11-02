@@ -27,8 +27,9 @@ func UnescapeCQText(text string) string {
 	return strings.ReplaceAll(text, "&amp;", "&")
 }
 
-// EscapeCQAnimatedSummary repairs the bracketed animation label only inside
-// complete CQ codes. Plain text and existing CQ escapes remain untouched.
+// EscapeCQAnimatedSummary escapes all inner brackets in complete CQ codes,
+// preserving the first opening and last closing bracket of each code.
+// Plain text and existing CQ escapes remain untouched.
 func EscapeCQAnimatedSummary(text string) string {
 	var result strings.Builder
 	for {
@@ -58,7 +59,18 @@ func EscapeCQAnimatedSummary(text string) string {
 			result.WriteString(text)
 			return result.String()
 		}
-		result.WriteString(strings.ReplaceAll(text[:end], "[动画表情]", "&#91;动画表情&#93;"))
+		result.WriteByte('[')
+		for i := 1; i < end-1; i++ {
+			switch text[i] {
+			case '[':
+				result.WriteString("&#91;")
+			case ']':
+				result.WriteString("&#93;")
+			default:
+				result.WriteByte(text[i])
+			}
+		}
+		result.WriteByte(']')
 		text = text[end:]
 	}
 }
